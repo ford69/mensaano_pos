@@ -29,6 +29,9 @@
       "eas": {
         "projectId": "b1446b6e-4d4f-4a89-9d3c-38f4f07c5f12"
       }
+    },
+    "android": {
+      "package": "com.mensaanogh.pos"
     }
   }
 }

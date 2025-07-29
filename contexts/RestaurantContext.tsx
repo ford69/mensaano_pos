@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { MenuItem, Order, User } from '@/types';
 import { useAuth } from './AuthContext';
 
-const API_URL = 'http://localhost:3001/api'; // Updated to match your backend port
+const API_URL = 'https://api.mensaanogh.com/api'; // Updated to production backend URL
 
 interface RestaurantContextType {
   menuItems: MenuItem[];

@@ -13,7 +13,7 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   const lines = [];
   
   // Header - centered for 80mm paper (approximately 32 characters wide)
-  lines.push('        RESTAURANT NAME');
+  lines.push('        MENSAANO & THE SHAWARMA SHACK');
   lines.push('      123 Main Street, Accra');
   lines.push('        Tel: 024-000-0000');
   lines.push(''); // Empty line for spacing
