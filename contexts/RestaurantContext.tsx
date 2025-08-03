@@ -42,40 +42,66 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
   const loadAll = async () => {
     setLoading(true);
     try {
+      console.log('RestaurantContext: Starting to load all data...');
+      
       // Menu Items (public)
-      const menuRes = await fetch(`${API_URL}/menu_items`);
-      const menuData = await menuRes.json();
-      // Transform _id to id for frontend compatibility
-      const transformedMenuItems = menuData.map((item: any) => ({
-        ...item,
-        id: item._id,
-      }));
-      setMenuItems(transformedMenuItems);
+      try {
+        console.log('RestaurantContext: Fetching menu items...');
+        const menuRes = await fetch(`${API_URL}/menu_items`);
+        console.log('RestaurantContext: Menu items response status:', menuRes.status);
+        const menuData = await menuRes.json();
+        // Transform _id to id for frontend compatibility
+        const transformedMenuItems = menuData.map((item: any) => ({
+          ...item,
+          id: item._id,
+        }));
+        setMenuItems(transformedMenuItems);
+        console.log('RestaurantContext: Menu items loaded successfully');
+      } catch (e) {
+        console.error('RestaurantContext: Error loading menu items:', e);
+      }
       
       // Orders (protected)
-      const ordersRes = await fetch(`${API_URL}/orders`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const ordersData = await ordersRes.json();
-      // Transform _id to id for orders as well
-      const transformedOrders = ordersData.map((order: any) => ({
-        ...order,
-        id: order._id,
-      }));
-      setOrders(transformedOrders);
+      if (token) {
+        try {
+          console.log('RestaurantContext: Fetching orders...');
+          const ordersRes = await fetch(`${API_URL}/orders`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          console.log('RestaurantContext: Orders response status:', ordersRes.status);
+          const ordersData = await ordersRes.json();
+          // Transform _id to id for orders as well
+          const transformedOrders = ordersData.map((order: any) => ({
+            ...order,
+            id: order._id,
+          }));
+          setOrders(transformedOrders);
+          console.log('RestaurantContext: Orders loaded successfully');
+        } catch (e) {
+          console.error('RestaurantContext: Error loading orders:', e);
+        }
+      }
       
       // Users (public for now)
-      const usersRes = await fetch(`${API_URL}/users`);
-      const usersData = await usersRes.json();
-      // Transform _id to id for users as well
-      const transformedUsers = usersData.map((user: any) => ({
-        ...user,
-        id: user._id,
-      }));
-      setUsers(transformedUsers);
+      try {
+        console.log('RestaurantContext: Fetching users...');
+        const usersRes = await fetch(`${API_URL}/users`);
+        console.log('RestaurantContext: Users response status:', usersRes.status);
+        const usersData = await usersRes.json();
+        // Transform _id to id for users as well
+        const transformedUsers = usersData.map((user: any) => ({
+          ...user,
+          id: user._id,
+        }));
+        setUsers(transformedUsers);
+        console.log('RestaurantContext: Users loaded successfully');
+      } catch (e) {
+        console.error('RestaurantContext: Error loading users:', e);
+      }
     } catch (e) {
-      console.error('Error loading data:', e);
+      console.error('RestaurantContext: Error in loadAll function:', e);
     } finally {
+      console.log('RestaurantContext: Setting loading to false');
       setLoading(false);
     }
   };

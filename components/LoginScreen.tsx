@@ -47,7 +47,7 @@ export default function LoginScreen() {
           style={styles.headerGradient}
         >
           <Image
-            source={require('../assets/images/mensaano.png')}
+            source={require('../assets/images/mensaano.jpg')}
             style={styles.logo}
             resizeMode="contain"
           />

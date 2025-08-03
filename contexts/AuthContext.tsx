@@ -27,29 +27,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Try to load token and user info on app start
     const load = async () => {
-      const storedToken = await AsyncStorage.getItem('token');
-      if (storedToken) {
-        setToken(storedToken);
-        // Try to fetch user info from backend using token
-        try {
-          const res = await fetch(`${API_URL}/auth/me`, {
-            headers: { Authorization: `Bearer ${storedToken}` },
-          });
-          if (res.ok) {
-            const userData = await res.json();
-            setUser(userData);
-          } else {
-            // Token is invalid, remove it
-            await AsyncStorage.removeItem('token');
-            setToken(null);
+      try {
+        console.log('AuthContext: Starting to load user data...');
+        const storedToken = await AsyncStorage.getItem('token');
+        console.log('AuthContext: Stored token found:', !!storedToken);
+        
+        if (storedToken) {
+          setToken(storedToken);
+          // Try to fetch user info from backend using token
+          try {
+            console.log('AuthContext: Attempting to fetch user data from API...');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            
+            const res = await fetch(`${API_URL}/auth/me`, {
+              headers: { Authorization: `Bearer ${storedToken}` },
+              signal: controller.signal,
+            });
+            
+            clearTimeout(timeoutId);
+            console.log('AuthContext: API response status:', res.status);
+            
+            if (res.ok) {
+              const userData = await res.json();
+              console.log('AuthContext: User data loaded successfully');
+              setUser(userData);
+            } else {
+              console.log('AuthContext: Token is invalid, removing it');
+              // Token is invalid, remove it
+              await AsyncStorage.removeItem('token');
+              setToken(null);
+            }
+          } catch (err) {
+            console.error('AuthContext: Error loading user from API:', err);
+            // Don't remove token on network errors, just set loading to false
+            // await AsyncStorage.removeItem('token');
+            // setToken(null);
           }
-        } catch (err) {
-          console.error('Error loading user:', err);
-          await AsyncStorage.removeItem('token');
-          setToken(null);
         }
+      } catch (err) {
+        console.error('AuthContext: Error in load function:', err);
+      } finally {
+        console.log('AuthContext: Setting loading to false');
+        setLoading(false);
       }
-      setLoading(false);
     };
     load();
   }, []);
