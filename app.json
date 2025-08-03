@@ -31,7 +31,13 @@
       }
     },
     "android": {
-      "package": "com.mensaanogh.pos"
+      "package": "com.mensaanogh.pos",
+      "permissions": [
+        "INTERNET",
+        "ACCESS_NETWORK_STATE",
+        "WAKE_LOCK",
+        "VIBRATE"
+      ]
     }
   }
 }

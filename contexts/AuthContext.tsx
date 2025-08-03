@@ -29,6 +29,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const load = async () => {
       try {
         console.log('AuthContext: Starting to load user data...');
+        console.log('AuthContext: API_URL:', API_URL);
+        
         const storedToken = await AsyncStorage.getItem('token');
         console.log('AuthContext: Stored token found:', !!storedToken);
         
@@ -38,7 +40,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             console.log('AuthContext: Attempting to fetch user data from API...');
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const timeoutId = setTimeout(() => {
+              console.log('AuthContext: API request timed out');
+              controller.abort();
+            }, 15000); // 15 second timeout
             
             const res = await fetch(`${API_URL}/auth/me`, {
               headers: { Authorization: `Bearer ${storedToken}` },
@@ -60,13 +65,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           } catch (err) {
             console.error('AuthContext: Error loading user from API:', err);
+            console.error('AuthContext: Error details:', err.message);
             // Don't remove token on network errors, just set loading to false
             // await AsyncStorage.removeItem('token');
             // setToken(null);
           }
+        } else {
+          console.log('AuthContext: No stored token found');
         }
       } catch (err) {
         console.error('AuthContext: Error in load function:', err);
+        console.error('AuthContext: Error details:', err.message);
       } finally {
         console.log('AuthContext: Setting loading to false');
         setLoading(false);
