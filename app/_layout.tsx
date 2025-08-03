@@ -15,6 +15,7 @@ function RootLayoutNav() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8fafc' }}>
         <Text style={{ fontSize: 16, color: '#6b7280' }}>Loading...</Text>
+        <Text style={{ fontSize: 12, color: '#9ca3af', marginTop: 8 }}>Connecting to server...</Text>
       </View>
     );
   }
