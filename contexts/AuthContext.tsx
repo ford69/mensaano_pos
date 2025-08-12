@@ -87,24 +87,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
     try {
+      console.log('🔍 DEBUG: Attempting login to:', `${API_URL}/auth/login`);
+      console.log('🔍 DEBUG: Username:', username);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'POS-App/1.0'
+        },
         body: JSON.stringify({ username, password }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
+      console.log('🔍 DEBUG: Response status:', res.status);
+      console.log('🔍 DEBUG: Response ok:', res.ok);
+      
       const data = await res.json();
+      console.log('🔍 DEBUG: Response data:', data);
+      
       if (res.ok && data.token) {
+        console.log('🔍 DEBUG: Login successful');
         await AsyncStorage.setItem('token', data.token);
         setToken(data.token);
         setUser(data.user);
         setLoading(false);
         return true;
       } else {
+        console.log('🔍 DEBUG: Login failed - res.ok:', res.ok, 'data.token:', !!data.token);
         setLoading(false);
         return false;
       }
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('🔍 DEBUG: Login error:', err);
+      if (err instanceof Error) {
+        console.error('🔍 DEBUG: Error message:', err.message);
+        console.error('🔍 DEBUG: Error name:', err.name);
+        
+        if (err.name === 'AbortError') {
+          console.error('🔍 DEBUG: Request timed out after 30 seconds');
+        } else if (err.message.includes('Network request failed')) {
+          console.error('🔍 DEBUG: Network request failed - check internet connection');
+        } else if (err.message.includes('SSL')) {
+          console.error('🔍 DEBUG: SSL certificate issue');
+        }
+      }
       setLoading(false);
       return false;
     }
