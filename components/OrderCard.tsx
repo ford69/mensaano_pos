@@ -24,9 +24,14 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   lines.push(`Time: ${date.toLocaleTimeString()}`);
   lines.push(`Customer: ${order.customer.name}`);
   
-  // Add customer address if available and order type is delivery
-  if (order.customer.address && order.type === 'delivery') {
-    lines.push(`Address: ${order.customer.address}`);
+  // Add customer contact info if available and order type is delivery
+  if (order.type === 'delivery') {
+    if (order.customer.phone) {
+      lines.push(`Phone: ${order.customer.phone}`);
+    }
+    if (order.customer.address) {
+      lines.push(`Address: ${order.customer.address}`);
+    }
   }
   
   lines.push(`Type: ${order.type === 'dine-in' ? `Dine-In (Table ${order.tableNumber})` : 'Delivery'}`);
