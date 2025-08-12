@@ -26,11 +26,26 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   
   // Add customer contact info if available and order type is delivery
   if (order.type === 'delivery') {
-    if (order.customer.phone) {
-      lines.push(`Phone: ${order.customer.phone}`);
-    }
-    if (order.customer.address) {
-      lines.push(`Address: ${order.customer.address}`);
+    console.log('🔍 DEBUG: Delivery order - Full order data:', JSON.stringify(order, null, 2));
+    console.log('🔍 DEBUG: Delivery order - customer object:', JSON.stringify(order.customer, null, 2));
+    console.log('🔍 DEBUG: Delivery order - customer phone:', order.customer.phone);
+    console.log('🔍 DEBUG: Delivery order - customer address:', order.customer.address);
+    console.log('🔍 DEBUG: Delivery order - phone type:', typeof order.customer.phone);
+    console.log('🔍 DEBUG: Delivery order - phone length:', order.customer.phone ? order.customer.phone.length : 'undefined');
+    
+    // Check for phone in different possible field names
+    const customer = order.customer as any; // Use any to check for different field names
+    const phoneValue = customer.phone || customer.phoneNumber || customer.contact || customer.tel;
+    console.log('🔍 DEBUG: Phone value found:', phoneValue);
+    
+    // Always show phone for delivery orders, even if empty
+    const phoneNumber = phoneValue && phoneValue.trim() 
+      ? phoneValue.trim() 
+      : 'No phone provided';
+    lines.push(`Phone: ${phoneNumber}`);
+    
+    if (order.customer.address && order.customer.address.trim()) {
+      lines.push(`Address: ${order.customer.address.trim()}`);
     }
   }
   
