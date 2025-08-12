@@ -10,15 +10,38 @@ router.get('/', async (req, res) => {
 
 // Create new order
 router.post('/', async (req, res) => {
-  const order = new Order(req.body);
-  await order.save();
-  res.json(order);
+  try {
+    // Add the creator information from the authenticated user
+    const orderData = {
+      ...req.body,
+      createdBy: req.user.username, // Add the username of the user who created the order
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    const order = new Order(orderData);
+    await order.save();
+    res.json(order);
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({ error: 'Failed to create order' });
+  }
 });
 
 // Update order
 router.patch('/:id', async (req, res) => {
-  const order = await Order.findByIdAndUpdate(req.params.id, req.body, { new: true });
-  res.json(order);
+  try {
+    const updateData = {
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    };
+    
+    const order = await Order.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    res.json(order);
+  } catch (error) {
+    console.error('Error updating order:', error);
+    res.status(500).json({ error: 'Failed to update order' });
+  }
 });
 
 module.exports = router; 

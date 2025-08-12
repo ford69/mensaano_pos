@@ -15,7 +15,7 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   // Header - centered for 80mm paper (approximately 32 characters wide)
   lines.push('        MENSAANO & THE SHAWARMA SHACK');
   lines.push('      123 Main Street, Accra');
-  lines.push('        Tel: 024-000-0000');
+  lines.push('        Tel: 055-777-80035 / 059-148-3073');
   lines.push(''); // Empty line for spacing
   
   // Order details
@@ -23,7 +23,19 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   lines.push(`Date: ${date.toLocaleDateString()}`);
   lines.push(`Time: ${date.toLocaleTimeString()}`);
   lines.push(`Customer: ${order.customer.name}`);
+  
+  // Add customer address if available and order type is delivery
+  if (order.customer.address && order.type === 'delivery') {
+    lines.push(`Address: ${order.customer.address}`);
+  }
+  
   lines.push(`Type: ${order.type === 'dine-in' ? `Dine-In (Table ${order.tableNumber})` : 'Delivery'}`);
+  
+  // Add order creator information if available
+  if (order.createdBy) {
+    lines.push(`Created by: ${order.createdBy}`);
+  }
+  
   lines.push(''); // Empty line for spacing
   
   // Separator line
@@ -88,7 +100,7 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   lines.push('         Please come again!');
   lines.push(''); // Empty line for spacing
   lines.push('--------------------------------');
-  lines.push('        Powered by Mensaaano POS');
+  lines.push('        Powered by SoftCode Lab');
   
   return lines.join('\n');
 }

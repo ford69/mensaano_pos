@@ -123,7 +123,7 @@ export default function NewOrderPage() {
         status: 'pending' as const,
         paymentStatus,
         specialInstructions: specialInstructions.trim() || undefined,
-        createdBy: user?.id || '',
+        createdBy: user?.username || '',
       };
 
       await createOrder(orderData);
