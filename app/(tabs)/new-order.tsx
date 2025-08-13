@@ -95,8 +95,13 @@ export default function NewOrderPage() {
       return;
     }
 
-    if (orderType === 'delivery' && (!phone.trim() || !address.trim())) {
-      Alert.alert('Error', 'Please enter phone and address for delivery');
+    if (!phone.trim()) {
+      Alert.alert('Error', 'Please enter phone number');
+      return;
+    }
+
+    if (orderType === 'delivery' && !address.trim()) {
+      Alert.alert('Error', 'Please enter delivery address');
       return;
     }
 
@@ -112,7 +117,7 @@ export default function NewOrderPage() {
         type: orderType,
         customer: {
           name: customerName.trim(),
-          phone: phone.trim() || undefined,
+          phone: phone.trim(),
           address: address.trim() || undefined,
         },
         tableNumber: orderType === 'dine-in' ? parseInt(tableNumber) : undefined,
@@ -188,6 +193,15 @@ export default function NewOrderPage() {
             onChangeText={setCustomerName}
           />
           
+          {/* Phone Number - Always shown for both dine-in and delivery */}
+          <TextInput
+            style={styles.input}
+            placeholder="Phone Number"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+          />
+          
           {orderType === 'dine-in' ? (
             <TextInput
               style={styles.input}
@@ -197,23 +211,14 @@ export default function NewOrderPage() {
               keyboardType="numeric"
             />
           ) : (
-            <>
-              <TextInput
-                style={styles.input}
-                placeholder="Phone Number"
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Delivery Address"
-                value={address}
-                onChangeText={setAddress}
-                multiline
-                numberOfLines={2}
-              />
-            </>
+            <TextInput
+              style={styles.input}
+              placeholder="Delivery Address"
+              value={address}
+              onChangeText={setAddress}
+              multiline
+              numberOfLines={2}
+            />
           )}
         </View>
 
