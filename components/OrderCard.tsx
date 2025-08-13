@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Order } from '@/types';
 import { useRestaurant } from '@/contexts/RestaurantContext';
@@ -13,9 +13,9 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   const lines = [];
   
   // Header - centered for 80mm paper (approximately 32 characters wide)
-  lines.push('        MENSAANO & THE SHAWARMA SHACK');
-  lines.push('      123 Main Street, Accra');
-  lines.push('        Tel: 055-777-80035 / 059-148-3073');
+  lines.push('        MENSAANO & THE SHAWARMA SHARK');
+  lines.push('      Anevon Crescent,Spintex Rd Accra');
+  lines.push('        Tel: 05577780035 & 0591483073');
   lines.push(''); // Empty line for spacing
   
   // Order details
@@ -34,9 +34,17 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
     : 'No phone provided';
   lines.push(`Phone: ${phoneNumber}`);
   
-  // Add address only for delivery orders
-  if (order.type === 'delivery' && order.customer.address && order.customer.address.trim()) {
-    lines.push(`Address: ${order.customer.address.trim()}`);
+  // Add address and rider contact only for delivery orders
+  if (order.type === 'delivery') {
+    if (order.customer.address && order.customer.address.trim()) {
+      lines.push(`Address: ${order.customer.address.trim()}`);
+    }
+    
+    const customer = order.customer as any;
+    const riderContact = customer.riderContact || customer.rider_contact || customer.driverContact;
+    if (riderContact && riderContact.trim()) {
+      lines.push(`Rider Contact: ${riderContact.trim()}`);
+    }
   }
   
   lines.push(`Type: ${order.type === 'dine-in' ? `Dine-In (Table ${order.tableNumber})` : 'Delivery'}`);
@@ -167,9 +175,11 @@ interface OrderCardProps {
 }
 
 export default function OrderCard({ order, onPress, showActions = false }: OrderCardProps) {
-  const { menuItems, updateOrderStatus } = useRestaurant();
+  const { menuItems, updateOrderStatus, updateOrder } = useRestaurant();
   const { user } = useAuth();
   const [showStatusPicker, setShowStatusPicker] = useState(false);
+  const [riderContact, setRiderContact] = useState(order.customer.riderContact || '');
+  const [showRiderInput, setShowRiderInput] = useState(false);
   const isAdmin = user?.role === 'admin';
 
   const getOrderTotal = () => {
@@ -196,6 +206,30 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
   const handleStatusUpdate = (newStatus: Order['status']) => {
     updateOrderStatus(order.id, newStatus);
     setShowStatusPicker(false);
+  };
+
+  const handleRiderContactUpdate = async () => {
+    if (!riderContact.trim()) {
+      Alert.alert('Error', 'Please enter rider contact number');
+      return;
+    }
+    
+    try {
+      // Update the order with rider contact
+      const updatedCustomer = {
+        ...order.customer,
+        riderContact: riderContact.trim()
+      };
+      
+      await updateOrder(order.id, {
+        customer: updatedCustomer
+      });
+      
+      setShowRiderInput(false);
+      Alert.alert('Success', 'Rider contact updated successfully');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update rider contact');
+    }
   };
 
   const getNextStatusOptions = (): Order['status'][] => {
@@ -291,7 +325,7 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
                 )}
               </TouchableOpacity>
 
-              {showStatusPicker && (
+                            {showStatusPicker && (
                 <View style={styles.statusPickerContainer}>
                   <Text style={styles.statusPickerTitle}>Change to:</Text>
                   {getNextStatusOptions().map((status) => (
@@ -303,8 +337,55 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
                       <Text style={styles.statusOptionText}>
                         {status.charAt(0).toUpperCase() + status.slice(1).replace('-', ' ')}
                       </Text>
-    </TouchableOpacity>
+                    </TouchableOpacity>
                   ))}
+                </View>
+              )}
+
+              {/* Rider Contact Input for Ready Delivery Orders */}
+              {order.type === 'delivery' && order.status === 'ready' && (
+                <View style={styles.riderContactSection}>
+                  <Text style={styles.riderContactTitle}>Rider Contact:</Text>
+                  {showRiderInput ? (
+                    <View style={styles.riderInputContainer}>
+                      <TextInput
+                        style={styles.riderInput}
+                        placeholder="Enter rider contact number"
+                        value={riderContact}
+                        onChangeText={setRiderContact}
+                        keyboardType="phone-pad"
+                      />
+                      <View style={styles.riderInputButtons}>
+                        <TouchableOpacity
+                          style={styles.riderSaveButton}
+                          onPress={handleRiderContactUpdate}
+                        >
+                          <Text style={styles.riderSaveButtonText}>Save</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.riderCancelButton}
+                          onPress={() => {
+                            setShowRiderInput(false);
+                            setRiderContact(order.customer.riderContact || '');
+                          }}
+                        >
+                          <Text style={styles.riderCancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={styles.riderDisplayContainer}>
+                      <Text style={styles.riderContactText}>
+                        {order.customer.riderContact || 'No rider assigned'}
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.riderEditButton}
+                        onPress={() => setShowRiderInput(true)}
+                      >
+                        <Text style={styles.riderEditButtonText}>Edit</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
             </>
@@ -471,5 +552,80 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  // Rider Contact Styles
+  riderContactSection: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#f9fafb',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  riderContactTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  riderInputContainer: {
+    gap: 8,
+  },
+  riderInput: {
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 6,
+    padding: 8,
+    fontSize: 14,
+    backgroundColor: '#ffffff',
+  },
+  riderInputButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  riderSaveButton: {
+    flex: 1,
+    backgroundColor: '#10B981',
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  riderSaveButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  riderCancelButton: {
+    flex: 1,
+    backgroundColor: '#ef4444',
+    paddingVertical: 8,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  riderCancelButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  riderDisplayContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  riderContactText: {
+    fontSize: 14,
+    color: '#374151',
+    flex: 1,
+  },
+  riderEditButton: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  riderEditButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 12,
   },
 });

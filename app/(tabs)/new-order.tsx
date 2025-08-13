@@ -22,6 +22,7 @@ export default function NewOrderPage() {
   const [tableNumber, setTableNumber] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+
   const [paymentStatus, setPaymentStatus] = useState<Order['paymentStatus']>('unpaid');
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [selectedItems, setSelectedItems] = useState<OrderItem[]>([]);
@@ -105,6 +106,8 @@ export default function NewOrderPage() {
       return;
     }
 
+
+
     if (selectedItems.length === 0) {
       Alert.alert('Error', 'Please select at least one item');
       return;
@@ -138,6 +141,7 @@ export default function NewOrderPage() {
       setTableNumber('');
       setPhone('');
       setAddress('');
+
       setSpecialInstructions('');
       setSelectedItems([]);
       setItemNotes({});
@@ -211,14 +215,17 @@ export default function NewOrderPage() {
               keyboardType="numeric"
             />
           ) : (
-            <TextInput
-              style={styles.input}
-              placeholder="Delivery Address"
-              value={address}
-              onChangeText={setAddress}
-              multiline
-              numberOfLines={2}
-            />
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Delivery Address"
+                value={address}
+                onChangeText={setAddress}
+                multiline
+                numberOfLines={2}
+              />
+
+            </>
           )}
         </View>
 

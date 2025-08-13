@@ -14,6 +14,7 @@ interface RestaurantContextType {
   createOrder: (order: Omit<Order, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
   updatePaymentStatus: (orderId: string, paymentStatus: Order['paymentStatus']) => Promise<void>;
+  updateOrder: (orderId: string, updates: Partial<Order>) => Promise<void>;
   addUser: (user: Omit<User, 'id'>) => Promise<void>;
   updateUser: (id: string, updates: Partial<User>) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
@@ -173,6 +174,19 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     await loadAll();
   };
 
+  const updateOrder = async (orderId: string, updates: Partial<Order>) => {
+    setLoading(true);
+    await fetch(`${API_URL}/orders/${orderId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ...updates, updatedAt: new Date().toISOString() }),
+    });
+    await loadAll();
+  };
+
   // Users
   const addUser = async (userData: Omit<User, 'id'>) => {
     setLoading(true);
@@ -218,6 +232,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
         createOrder,
         updateOrderStatus,
         updatePaymentStatus,
+        updateOrder,
         addUser,
         updateUser,
         deleteUser,

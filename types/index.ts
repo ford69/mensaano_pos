@@ -33,6 +33,7 @@ export interface Customer {
   name: string;
   phone?: string;
   address?: string;
+  riderContact?: string;
 }
 
 export interface Order {
