@@ -31,12 +31,20 @@ router.post('/', async (req, res) => {
 // Update order
 router.patch('/:id', async (req, res) => {
   try {
+    console.log('🔍 BACKEND DEBUG: Updating order:', req.params.id);
+    console.log('🔍 BACKEND DEBUG: Request body:', JSON.stringify(req.body, null, 2));
+    
     const updateData = {
       ...req.body,
       updatedAt: new Date().toISOString()
     };
     
+    console.log('🔍 BACKEND DEBUG: Update data:', JSON.stringify(updateData, null, 2));
+    
     const order = await Order.findByIdAndUpdate(req.params.id, updateData, { new: true });
+    
+    console.log('🔍 BACKEND DEBUG: Updated order:', JSON.stringify(order, null, 2));
+    
     res.json(order);
   } catch (error) {
     console.error('Error updating order:', error);

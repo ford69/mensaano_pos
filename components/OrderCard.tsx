@@ -8,14 +8,14 @@ import StatusBadge from './StatusBadge';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import * as Print from 'expo-print';
 
-function generateTextReceipt(order: Order, menuItems: any[]) {
+function generateTextReceipt(order: Order, menuItems: any[], currentRiderContact?: string) {
   const date = new Date(order.createdAt);
   const lines = [];
   
   // Header - centered for 80mm paper (approximately 32 characters wide)
   lines.push('        MENSAANO & THE SHAWARMA SHARK');
   lines.push('      Anevon Crescent,Spintex Rd Accra');
-  lines.push('        Tel: 05577780035 & 0591483073');
+  lines.push('        Tel: 0557780035  & 0591483073');
   lines.push(''); // Empty line for spacing
   
   // Order details
@@ -41,9 +41,21 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
     }
     
     const customer = order.customer as any;
-    const riderContact = customer.riderContact || customer.rider_contact || customer.driverContact;
+    const riderContact = currentRiderContact || customer.riderContact || customer.rider_contact || customer.driverContact;
+    
+    console.log('🔍 RECEIPT DEBUG: currentRiderContact param:', currentRiderContact);
+    console.log('🔍 RECEIPT DEBUG: customer.riderContact:', customer.riderContact);
+    console.log('🔍 RECEIPT DEBUG: customer.rider_contact:', customer.rider_contact);
+    console.log('🔍 RECEIPT DEBUG: customer.driverContact:', customer.driverContact);
+    console.log('🔍 RECEIPT DEBUG: final riderContact value:', riderContact);
+    console.log('🔍 RECEIPT DEBUG: order type:', order.type);
+    
+    // Always add rider contact for delivery orders if available
     if (riderContact && riderContact.trim()) {
       lines.push(`Rider Contact: ${riderContact.trim()}`);
+      console.log('🔍 RECEIPT DEBUG: SUCCESS - Added rider contact to receipt');
+    } else {
+      console.log('🔍 RECEIPT DEBUG: FAILED - No rider contact to add');
     }
   }
   
@@ -98,7 +110,6 @@ function generateTextReceipt(order: Order, menuItems: any[]) {
   const total = subtotal + tax;
   
   lines.push(`Subtotal:                    ₵${subtotal.toFixed(2)}`);
-  lines.push(`Tax (5%):                    ₵${tax.toFixed(2)}`);
   lines.push('--------------------------------');
   lines.push(`TOTAL:                       ₵${total.toFixed(2)}`);
   lines.push(''); // Empty line for spacing
@@ -215,19 +226,36 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
     }
     
     try {
+      console.log('🔍 UPDATE DEBUG: Starting rider contact update...');
+      console.log('🔍 UPDATE DEBUG: Updating rider contact to:', riderContact.trim());
+      console.log('🔍 UPDATE DEBUG: Order ID:', order.id);
+      console.log('🔍 UPDATE DEBUG: Current order customer:', JSON.stringify(order.customer, null, 2));
+      
       // Update the order with rider contact
       const updatedCustomer = {
         ...order.customer,
         riderContact: riderContact.trim()
       };
       
+      console.log('🔍 UPDATE DEBUG: Updated customer data:', JSON.stringify(updatedCustomer, null, 2));
+      console.log('🔍 UPDATE DEBUG: About to call updateOrder...');
+      
       await updateOrder(order.id, {
         customer: updatedCustomer
       });
       
+      console.log('🔍 UPDATE DEBUG: updateOrder completed successfully');
+      
+      // Update the local order object to reflect the changes immediately
+      order.customer.riderContact = riderContact.trim();
+      
+      console.log('🔍 UPDATE DEBUG: Local order updated, new riderContact:', order.customer.riderContact);
+      
       setShowRiderInput(false);
       Alert.alert('Success', 'Rider contact updated successfully');
     } catch (error) {
+      console.error('🔍 UPDATE DEBUG: Error updating rider contact:', error);
+      console.error('🔍 UPDATE DEBUG: Error details:', error.message);
       Alert.alert('Error', 'Failed to update rider contact');
     }
   };
@@ -304,9 +332,30 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
               <View style={styles.completedMessage}>
                 <Text style={styles.completedText}>Order completed - No further changes allowed</Text>
               </View>
+              
+              {/* Show rider contact for completed delivery orders */}
+              {order.type === 'delivery' && order.customer.riderContact && (
+                <View style={styles.completedRiderInfo}>
+                  <Text style={styles.completedRiderText}>
+                    Rider Contact: {order.customer.riderContact}
+                  </Text>
+                </View>
+              )}
+              
               <TouchableOpacity
                 style={styles.printButton}
-                onPress={() => printTextReceipt(generateTextReceipt(order, menuItems))}
+                onPress={() => {
+                  // For completed orders, use the database value since the input field is hidden
+                  const riderContactForReceipt = order.status === 'completed' 
+                    ? order.customer.riderContact 
+                    : riderContact;
+                  console.log('🔍 PRINT DEBUG: Printing receipt with riderContact:', riderContactForReceipt);
+                  console.log('🔍 PRINT DEBUG: Order status:', order.status);
+                  console.log('🔍 PRINT DEBUG: Database riderContact:', order.customer.riderContact);
+                  console.log('🔍 PRINT DEBUG: Full order customer data:', JSON.stringify(order.customer, null, 2));
+                  console.log('🔍 PRINT DEBUG: Full order data:', JSON.stringify(order, null, 2));
+                  printTextReceipt(generateTextReceipt(order, menuItems, riderContactForReceipt));
+                }}
               >
                 <Text style={styles.printButtonText}>Print Receipt</Text>
               </TouchableOpacity>
@@ -376,7 +425,7 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
                   ) : (
                     <View style={styles.riderDisplayContainer}>
                       <Text style={styles.riderContactText}>
-                        {order.customer.riderContact || 'No rider assigned'}
+                        {riderContact || order.customer.riderContact || 'No rider assigned'}
                       </Text>
                       <TouchableOpacity
                         style={styles.riderEditButton}
@@ -627,5 +676,19 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
     fontSize: 12,
+  },
+  completedRiderInfo: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#0ea5e9',
+  },
+  completedRiderText: {
+    fontSize: 14,
+    color: '#0c4a6e',
+    fontWeight: '500',
+    textAlign: 'center',
   },
 });

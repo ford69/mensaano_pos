@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { MenuItem, Order, User } from '@/types';
 import { useAuth } from './AuthContext';
 
+// const API_URL = 'http://192.168.100.89:3001/api';
 const API_URL = 'https://api.mensaanogh.com/api'; // Updated to production backend URL
 
 interface RestaurantContextType {
@@ -176,7 +177,10 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
 
   const updateOrder = async (orderId: string, updates: Partial<Order>) => {
     setLoading(true);
-    await fetch(`${API_URL}/orders/${orderId}`, {
+    console.log('🔍 CONTEXT DEBUG: Updating order:', orderId);
+    console.log('🔍 CONTEXT DEBUG: Updates:', JSON.stringify(updates, null, 2));
+    
+    const response = await fetch(`${API_URL}/orders/${orderId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -184,6 +188,11 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
       },
       body: JSON.stringify({ ...updates, updatedAt: new Date().toISOString() }),
     });
+    
+    console.log('🔍 CONTEXT DEBUG: Response status:', response.status);
+    const responseData = await response.json();
+    console.log('🔍 CONTEXT DEBUG: Response data:', JSON.stringify(responseData, null, 2));
+    
     await loadAll();
   };
 
