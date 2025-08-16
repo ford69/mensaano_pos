@@ -106,10 +106,8 @@ function generateTextReceipt(order: Order, menuItems: any[], currentRiderContact
   lines.push('--------------------------------');
   
   // Totals
-  const tax = subtotal * 0.05;
-  const total = subtotal + tax;
+  const total = subtotal;
   
-  lines.push(`Subtotal:                    ₵${subtotal.toFixed(2)}`);
   lines.push('--------------------------------');
   lines.push(`TOTAL:                       ₵${total.toFixed(2)}`);
   lines.push(''); // Empty line for spacing
