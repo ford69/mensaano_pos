@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { MenuItem, Order, User } from '@/types';
 import { useAuth } from './AuthContext';
-
-// const API_URL = 'http://192.168.100.89:3001/api';
-const API_URL = 'https://api.mensaanogh.com/api'; // Updated to production backend URL
+import { API_URL } from '@/config/api';
 
 interface RestaurantContextType {
   menuItems: MenuItem[];
@@ -44,66 +42,68 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
   const loadAll = async () => {
     setLoading(true);
     try {
-      console.log('RestaurantContext: Starting to load all data...');
+      // Load all data in parallel for better performance
+      const promises = [];
       
       // Menu Items (public)
-      try {
-        console.log('RestaurantContext: Fetching menu items...');
-        const menuRes = await fetch(`${API_URL}/menu_items`);
-        console.log('RestaurantContext: Menu items response status:', menuRes.status);
-        const menuData = await menuRes.json();
-        // Transform _id to id for frontend compatibility
-        const transformedMenuItems = menuData.map((item: any) => ({
-          ...item,
-          id: item._id,
-        }));
-        setMenuItems(transformedMenuItems);
-        console.log('RestaurantContext: Menu items loaded successfully');
-      } catch (e) {
-        console.error('RestaurantContext: Error loading menu items:', e);
-      }
+      promises.push(
+        fetch(`${API_URL}/menu_items`)
+          .then(res => res.json())
+          .then(menuData => {
+            const transformedMenuItems = menuData.map((item: any) => ({
+              ...item,
+              id: item._id,
+            }));
+            setMenuItems(transformedMenuItems);
+          })
+          .catch(e => {
+            if (__DEV__) console.error('Error loading menu items:', e);
+          })
+      );
       
-      // Orders (protected)
+      // Orders (protected) - only if token exists
       if (token) {
-        try {
-          console.log('RestaurantContext: Fetching orders...');
-          const ordersRes = await fetch(`${API_URL}/orders`, {
+        promises.push(
+          fetch(`${API_URL}/orders`, {
             headers: { Authorization: `Bearer ${token}` },
-          });
-          console.log('RestaurantContext: Orders response status:', ordersRes.status);
-          const ordersData = await ordersRes.json();
-          // Transform _id to id for orders as well
-          const transformedOrders = ordersData.map((order: any) => ({
-            ...order,
-            id: order._id,
-          }));
-          setOrders(transformedOrders);
-          console.log('RestaurantContext: Orders loaded successfully');
-        } catch (e) {
-          console.error('RestaurantContext: Error loading orders:', e);
-        }
+          })
+            .then(res => res.json())
+            .then(ordersData => {
+              const transformedOrders = ordersData.map((order: any) => ({
+                ...order,
+                id: order._id,
+              }));
+              setOrders(transformedOrders);
+            })
+            .catch(e => {
+              if (__DEV__) console.error('Error loading orders:', e);
+            })
+        );
       }
       
-      // Users (public for now)
-      try {
-        console.log('RestaurantContext: Fetching users...');
-        const usersRes = await fetch(`${API_URL}/users`);
-        console.log('RestaurantContext: Users response status:', usersRes.status);
-        const usersData = await usersRes.json();
-        // Transform _id to id for users as well
-        const transformedUsers = usersData.map((user: any) => ({
-          ...user,
-          id: user._id,
-        }));
-        setUsers(transformedUsers);
-        console.log('RestaurantContext: Users loaded successfully');
-      } catch (e) {
-        console.error('RestaurantContext: Error loading users:', e);
-      }
+      // Users (public)
+      promises.push(
+        fetch(`${API_URL}/users`)
+          .then(res => res.json())
+          .then(usersData => {
+            const transformedUsers = usersData.map((user: any) => ({
+              ...user,
+              id: user._id,
+            }));
+            setUsers(transformedUsers);
+          })
+          .catch(e => {
+            if (__DEV__) console.error('Error loading users:', e);
+          })
+      );
+      
+      // Wait for all requests to complete
+      await Promise.allSettled(promises);
     } catch (e) {
-      console.error('RestaurantContext: Error in loadAll function:', e);
+      if (__DEV__) {
+        console.error('Error in loadAll function:', e);
+      }
     } finally {
-      console.log('RestaurantContext: Setting loading to false');
       setLoading(false);
     }
   };

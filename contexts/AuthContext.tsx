@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '@/types';
-
-// const API_URL = 'http://192.168.100.89:3001/api'; // Updated to match backend port
-const API_URL = 'https://api.mensaanogh.com/api'; // Updated to production backend URL
+import { API_URL } from '@/config/api';
 
 
 interface AuthContextType {
@@ -28,22 +26,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Try to load token and user info on app start
     const load = async () => {
       try {
-        console.log('AuthContext: Starting to load user data...');
-        console.log('AuthContext: API_URL:', API_URL);
-        
         const storedToken = await AsyncStorage.getItem('token');
-        console.log('AuthContext: Stored token found:', !!storedToken);
         
         if (storedToken) {
           setToken(storedToken);
           // Try to fetch user info from backend using token
           try {
-            console.log('AuthContext: Attempting to fetch user data from API...');
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => {
-              console.log('AuthContext: API request timed out');
-              controller.abort();
-            }, 15000); // 15 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
             const res = await fetch(`${API_URL}/auth/me`, {
               headers: { Authorization: `Bearer ${storedToken}` },
@@ -51,33 +41,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             });
             
             clearTimeout(timeoutId);
-            console.log('AuthContext: API response status:', res.status);
             
             if (res.ok) {
-              const userData = await res.json();
-              console.log('AuthContext: User data loaded successfully');
-              setUser(userData);
+              // Check if response is JSON before parsing
+              const contentType = res.headers.get('content-type');
+              if (contentType && contentType.includes('application/json')) {
+                const userData = await res.json();
+                setUser(userData);
+              } else {
+                // Invalid response format, remove token
+                await AsyncStorage.removeItem('token');
+                setToken(null);
+              }
             } else {
-              console.log('AuthContext: Token is invalid, removing it');
               // Token is invalid, remove it
               await AsyncStorage.removeItem('token');
               setToken(null);
             }
           } catch (err) {
-            console.error('AuthContext: Error loading user from API:', err);
-            console.error('AuthContext: Error details:', err.message);
+            if (__DEV__) {
+              console.error('Error loading user:', err);
+            }
             // Don't remove token on network errors, just set loading to false
-            // await AsyncStorage.removeItem('token');
-            // setToken(null);
           }
-        } else {
-          console.log('AuthContext: No stored token found');
         }
       } catch (err) {
-        console.error('AuthContext: Error in load function:', err);
-        console.error('AuthContext: Error details:', err.message);
+        if (__DEV__) {
+          console.error('Error in load function:', err);
+        }
       } finally {
-        console.log('AuthContext: Setting loading to false');
         setLoading(false);
       }
     };
@@ -87,18 +79,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
     try {
-      console.log('🔍 DEBUG: Attempting login to:', `${API_URL}/auth/login`);
-      console.log('🔍 DEBUG: Username:', username);
-      
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
       const res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'User-Agent': 'POS-App/1.0'
         },
         body: JSON.stringify({ username, password }),
         signal: controller.signal,
@@ -106,37 +94,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       clearTimeout(timeoutId);
       
-      console.log('🔍 DEBUG: Response status:', res.status);
-      console.log('🔍 DEBUG: Response ok:', res.ok);
+      // Check if response is JSON before parsing
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await res.text();
+        if (__DEV__) {
+          console.error('Login error: Expected JSON but got:', contentType, 'Response:', text.substring(0, 200));
+        }
+        setLoading(false);
+        return false;
+      }
       
       const data = await res.json();
-      console.log('🔍 DEBUG: Response data:', data);
       
       if (res.ok && data.token) {
-        console.log('🔍 DEBUG: Login successful');
         await AsyncStorage.setItem('token', data.token);
         setToken(data.token);
         setUser(data.user);
         setLoading(false);
         return true;
       } else {
-        console.log('🔍 DEBUG: Login failed - res.ok:', res.ok, 'data.token:', !!data.token);
         setLoading(false);
         return false;
       }
-    } catch (err) {
-      console.error('🔍 DEBUG: Login error:', err);
-      if (err instanceof Error) {
-        console.error('🔍 DEBUG: Error message:', err.message);
-        console.error('🔍 DEBUG: Error name:', err.name);
-        
-        if (err.name === 'AbortError') {
-          console.error('🔍 DEBUG: Request timed out after 30 seconds');
-        } else if (err.message.includes('Network request failed')) {
-          console.error('🔍 DEBUG: Network request failed - check internet connection');
-        } else if (err.message.includes('SSL')) {
-          console.error('🔍 DEBUG: SSL certificate issue');
-        }
+    } catch (err: any) {
+      if (__DEV__) {
+        console.error('Login error:', err?.message || err);
       }
       setLoading(false);
       return false;

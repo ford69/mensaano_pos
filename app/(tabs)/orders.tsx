@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,12 +21,21 @@ export default function OrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.id.includes(searchQuery);
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  const filteredOrders = useMemo(() => {
+    return orders.filter(order => {
+      const matchesSearch = searchQuery.trim() === '' || 
+                           order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           order.id.includes(searchQuery);
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, searchQuery, statusFilter]);
+
+  const renderOrder = useCallback(({ item }: { item: Order }) => (
+    <OrderCard key={item.id} order={item} />
+  ), []);
+
+  const keyExtractor = useCallback((item: Order) => item.id, []);
 
   const statusOptions: Array<{ value: Order['status'] | 'all', label: string }> = [
     { value: 'all', label: 'All' },
@@ -68,6 +78,7 @@ export default function OrdersPage() {
                 statusFilter === option.value && styles.filterButtonActive
               ]}
               onPress={() => setStatusFilter(option.value)}
+              activeOpacity={0.7}
             >
               <Text style={[
                 styles.filterButtonText,
@@ -80,20 +91,26 @@ export default function OrdersPage() {
         </ScrollView>
       </View>
 
-      <ScrollView style={styles.ordersList}>
-        {filteredOrders.length === 0 ? (
+      <FlatList
+        data={filteredOrders}
+        renderItem={renderOrder}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={styles.ordersList}
+        ListEmptyComponent={
           <Text style={styles.emptyText}>No orders found</Text>
-        ) : (
-          filteredOrders.map((order) => (
-            <OrderCard key={order.id} order={order} />
-          ))
-        )}
-      </ScrollView>
+        }
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        windowSize={10}
+        initialNumToRender={10}
+      />
 
       {/* Floating Action Button */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => router.push('/(tabs)/new-order')}
+        activeOpacity={0.8}
       >
         <Plus color="#ffffff" size={24} />
       </TouchableOpacity>
@@ -162,7 +179,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   ordersList: {
-    flex: 1,
+    flexGrow: 1,
     padding: 16,
   },
   emptyText: {

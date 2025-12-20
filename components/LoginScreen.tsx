@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,26 +13,45 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
 
+const GRADIENT_COLORS = ['#ffae00', '#ffce4b'] as const;
+
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, resetUsers, debugUsers } = useAuth();
+  const { login } = useAuth();
 
-  const handleLogin = async () => {
-    if (!username || !password) {
+  const handleLogin = useCallback(async () => {
+    if (!username.trim() || !password.trim()) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
 
     setLoading(true);
-    const success = await login(username, password);
-    setLoading(false);
-
-    if (!success) {
-      Alert.alert('Error', 'Invalid username or password');
+    try {
+      const success = await login(username.trim(), password);
+      if (!success) {
+        Alert.alert(
+          'Login Failed', 
+          'Invalid username or password. Please check your credentials and try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Error',
+        'Unable to connect to server. Please check your internet connection and try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [username, password, login]);
+
+  const gradientStyle = useMemo(() => ({
+    start: { x: 0, y: 0 },
+    end: { x: 1, y: 1 },
+  }), []);
 
   return (
     <KeyboardAvoidingView
@@ -41,9 +60,9 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <LinearGradient
-          colors={['#ffae00', '#ffce4b']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={GRADIENT_COLORS}
+          start={gradientStyle.start}
+          end={gradientStyle.end}
           style={styles.headerGradient}
         >
           <Image
@@ -76,11 +95,12 @@ export default function LoginScreen() {
             style={styles.buttonWrapper}
             onPress={handleLogin}
             disabled={loading}
+            activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#ffae00', '#ffce4b']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              colors={GRADIENT_COLORS}
+              start={gradientStyle.start}
+              end={gradientStyle.end}
               style={[styles.button, loading && styles.buttonDisabled]}
             >
               <Text style={styles.buttonText}>
