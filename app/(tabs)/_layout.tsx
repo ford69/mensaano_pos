@@ -1,7 +1,7 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, ChefHat, ShoppingCart, ChartBar as BarChart3, Settings, ClipboardList } from 'lucide-react-native';
+import { User, ChefHat, ShoppingCart, ChartBar as BarChart3, Settings, ClipboardList, PlusCircle } from 'lucide-react-native';
 
 export default function TabLayout() {
   const { user } = useAuth();
@@ -17,11 +17,12 @@ export default function TabLayout() {
           { name: 'menu', title: 'Menu', icon: ShoppingCart },
           { name: 'users', title: 'Users', icon: User },
           { name: 'profile', title: 'Profile', icon: Settings },
+          { name: 'new-order', title: 'New Order', icon: PlusCircle }
         ];
       case 'waiter':
         return [
           { name: 'index', title: 'Orders', icon: ClipboardList },
-          { name: 'new-order', title: 'New Order', icon: ShoppingCart },
+          { name: 'new-order', title: 'New Order', icon: PlusCircle },
           { name: 'profile', title: 'Profile', icon: Settings },
         ];
       case 'kitchen':

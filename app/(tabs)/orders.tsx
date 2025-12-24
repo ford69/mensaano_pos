@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useRestaurant } from '@/contexts/RestaurantContext';
 import { Order } from '@/types';
 import OrderCard from '@/components/OrderCard';
-import { Search, Filter, Plus } from 'lucide-react-native';
+import { Search, Filter, ShoppingCart } from 'lucide-react-native';
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -22,12 +22,29 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
 
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
+    const filtered = orders.filter(order => {
       const matchesSearch = searchQuery.trim() === '' || 
                            order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            order.id.includes(searchQuery);
       const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
       return matchesSearch && matchesStatus;
+    });
+
+    // Sort orders: active orders first, then completed orders
+    // Within each group, sort by date (newest first)
+    return filtered.sort((a, b) => {
+      const aIsCompleted = a.status === 'completed';
+      const bIsCompleted = b.status === 'completed';
+
+      // If one is completed and the other isn't, put active orders first
+      if (aIsCompleted !== bIsCompleted) {
+        return aIsCompleted ? 1 : -1;
+      }
+
+      // Within the same group (both completed or both active), sort by date (newest first)
+      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
+      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
+      return bDate - aDate;
     });
   }, [orders, searchQuery, statusFilter]);
 
@@ -51,8 +68,20 @@ export default function OrdersPage() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.titleContainer}>
-        <Text style={styles.title}>Orders Management</Text>
-          <Text style={styles.subtitle}>Track and manage customer orders</Text>
+          <View style={styles.titleRow}>
+            <View style={styles.titleTextContainer}>
+              <Text style={styles.title}>Orders Management</Text>
+              <Text style={styles.subtitle}>Track and manage customer orders</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.createOrderButton}
+              onPress={() => router.push('/(tabs)/new-order')}
+              activeOpacity={0.7}
+            >
+              <ShoppingCart color="#ffffff" size={18} />
+              <Text style={styles.createOrderButtonText}>Create Order</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         
         <View style={styles.searchContainer}>
@@ -106,14 +135,6 @@ export default function OrdersPage() {
         initialNumToRender={10}
       />
 
-      {/* Floating Action Button */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => router.push('/(tabs)/new-order')}
-        activeOpacity={0.8}
-      >
-        <Plus color="#ffffff" size={24} />
-      </TouchableOpacity>
     </SafeAreaView>
   );
 }
@@ -128,9 +149,18 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
+    zIndex: 10,
   },
   titleContainer: {
     marginBottom: 16,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  titleTextContainer: {
+    flex: 1,
   },
   title: {
     fontSize: 28,
@@ -142,6 +172,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     fontWeight: '500',
+  },
+  createOrderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  createOrderButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   searchContainer: {
     flexDirection: 'row',
@@ -187,21 +236,5 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 16,
     marginTop: 40,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 80, // Above the tab bar
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#10B981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
   },
 });

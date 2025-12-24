@@ -124,7 +124,7 @@ function generateTextReceipt(order: Order, menuItems: any[], currentRiderContact
   
   lines.push(''); // Empty line for spacing
   lines.push('        Thank you for your order!');
-  lines.push('         Please come again!');
+  lines.push('         We look forward to serving you again!');
   lines.push(''); // Empty line for spacing
   lines.push('--------------------------------');
   lines.push('        Powered by SoftCode Lab');

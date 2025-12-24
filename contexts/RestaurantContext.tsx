@@ -20,6 +20,7 @@ interface RestaurantContextType {
   getOrdersByStatus: (status: Order['status']) => Order[];
   getOrdersByUser: (userId: string) => Order[];
   getTodaysOrders: () => Order[];
+  getCompletedOrdersLast6Days: () => Order[];
   loading: boolean;
 }
 
@@ -228,6 +229,24 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     const today = new Date().toDateString();
     return orders.filter(order => new Date(order.createdAt).toDateString() === today);
   };
+  const getCompletedOrdersLast6Days = () => {
+    const now = new Date();
+    // Set to today's midnight (12:00 AM)
+    const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    // Calculate 6 days ago from today's midnight
+    const sixDaysAgo = new Date(todayMidnight);
+    sixDaysAgo.setDate(sixDaysAgo.getDate() - 6);
+    
+    return orders.filter(order => {
+      if (order.status !== 'completed') return false;
+      
+      // Use updatedAt for when the order was actually completed
+      const completedDate = new Date(order.updatedAt || order.createdAt);
+      
+      // Only include orders completed within the last 6 days (from today's midnight)
+      return completedDate >= sixDaysAgo && completedDate <= now;
+    });
+  };
 
   return (
     <RestaurantContext.Provider
@@ -248,6 +267,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
         getOrdersByStatus,
         getOrdersByUser,
         getTodaysOrders,
+        getCompletedOrdersLast6Days,
         loading,
       }}
     >

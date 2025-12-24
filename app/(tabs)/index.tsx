@@ -17,7 +17,7 @@ import { ShoppingBag, Clock, CircleCheck as CheckCircle } from 'lucide-react-nat
 
 export default function HomePage() {
   const { user } = useAuth();
-  const { orders, getTodaysOrders, getOrdersByStatus, updateOrderStatus } = useRestaurant();
+  const { orders, getTodaysOrders, getOrdersByStatus, getCompletedOrdersLast6Days, updateOrderStatus } = useRestaurant();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = () => {
@@ -71,8 +71,8 @@ export default function HomePage() {
           </View>
           <View style={styles.statCard}>
             <CheckCircle color="#059669" size={24} />
-            <Text style={styles.statValue}>{getOrdersByStatus('completed').length}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statValue}>{getCompletedOrdersLast6Days().length}</Text>
+            <Text style={styles.statLabel}>Completed (6 days)</Text>
           </View>
         </View>
 

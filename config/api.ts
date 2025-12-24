@@ -7,7 +7,7 @@
 const isDev = __DEV__;
 
 // Set to true to use local backend, false for production
-const USE_LOCAL_BACKEND = true;
+const USE_LOCAL_BACKEND = false;
 
 const LOCAL_API_URL = 'http://localhost:4000/api';
 // For physical device testing, uncomment and set your local IP:
