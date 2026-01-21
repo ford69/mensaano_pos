@@ -36,6 +36,7 @@ export default function TabLayout() {
   };
 
   const tabs = getTabsForRole();
+  const isAdmin = user.role === 'admin';
 
   return (
     <Tabs
@@ -65,6 +66,15 @@ export default function TabLayout() {
           }}
         />
       ))}
+      {/* Explicitly hide Users tab for non-admin roles */}
+      {!isAdmin && (
+        <Tabs.Screen
+          name="users"
+          options={{
+            href: null, // This completely hides the tab from the tab bar
+          }}
+        />
+      )}
     </Tabs>
   );
 }

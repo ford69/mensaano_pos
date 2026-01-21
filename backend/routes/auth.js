@@ -34,7 +34,23 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    const valid = await bcrypt.compare(password, user.password);
+    // Check if password is already hashed (bcrypt hashes start with $2a$, $2b$, or $2y$)
+    let valid = false;
+    if (user.password && user.password.startsWith('$2')) {
+      // Password is hashed, use bcrypt.compare
+      valid = await bcrypt.compare(password, user.password);
+    } else {
+      // Password is plain text (legacy users), compare directly and then hash it
+      valid = user.password === password;
+      if (valid && user.password) {
+        // Hash the password for future logins
+        const hash = await bcrypt.hash(password, 10);
+        user.password = hash;
+        await user.save();
+        console.log('[LOGIN] Migrated user password to hashed format');
+      }
+    }
+    
     console.log('[LOGIN] Password valid:', valid);
     if (!valid) {
       console.log('[LOGIN] Invalid credentials: password mismatch');

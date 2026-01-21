@@ -16,7 +16,7 @@ router.post('/', async (req, res) => {
     // Add the creator information from the authenticated user
     const orderData = {
       ...req.body,
-      createdBy: req.user.username, // Add the username of the user who created the order
+      createdBy: req.user.id, // Add the user ID of the user who created the order
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };

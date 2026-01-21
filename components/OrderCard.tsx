@@ -8,7 +8,7 @@ import StatusBadge from './StatusBadge';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import * as Print from 'expo-print';
 
-function generateTextReceipt(order: Order, menuItems: any[], currentRiderContact?: string) {
+function generateTextReceipt(order: Order, menuItems: any[], users: any[], currentRiderContact?: string) {
   const date = new Date(order.createdAt);
   const lines = [];
   
@@ -63,7 +63,10 @@ function generateTextReceipt(order: Order, menuItems: any[], currentRiderContact
   
   // Add order creator information if available
   if (order.createdBy) {
-    lines.push(`Created by: ${order.createdBy}`);
+    // Look up creator username from users list
+    const creator = users.find((u: any) => u.id === order.createdBy);
+    const creatorName = creator?.username || order.createdBy || 'Unknown';
+    lines.push(`Created by: ${creatorName}`);
   }
   
   lines.push(''); // Empty line for spacing
@@ -184,12 +187,18 @@ interface OrderCardProps {
 }
 
 export default function OrderCard({ order, onPress, showActions = false }: OrderCardProps) {
-  const { menuItems, updateOrderStatus, updateOrder } = useRestaurant();
+  const { menuItems, users, updateOrderStatus, updateOrder } = useRestaurant();
   const { user } = useAuth();
+  
+  // Find the creator's username by ID
+  const creator = users.find(u => u.id === order.createdBy);
+  const creatorName = creator?.username || order.createdBy || 'Unknown';
   const [showStatusPicker, setShowStatusPicker] = useState(false);
   const [riderContact, setRiderContact] = useState(order.customer.riderContact || '');
   const [showRiderInput, setShowRiderInput] = useState(false);
   const isAdmin = user?.role === 'admin';
+  const isWaiter = user?.role === 'waiter';
+  const canUpdateStatus = isAdmin || isWaiter; // Allow both admin and waiter to update order status
 
   const getOrderTotal = () => {
     return order.items.reduce((total, item) => {
@@ -253,7 +262,7 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
       Alert.alert('Success', 'Rider contact updated successfully');
     } catch (error) {
       console.error('🔍 UPDATE DEBUG: Error updating rider contact:', error);
-      console.error('🔍 UPDATE DEBUG: Error details:', error.message);
+      console.error('🔍 UPDATE DEBUG: Error details:', error instanceof Error ? error.message : String(error));
       Alert.alert('Error', 'Failed to update rider contact');
     }
   };
@@ -322,8 +331,8 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
         </View>
       </View>
 
-      {/* Admin Status Update Section */}
-      {isAdmin && (
+      {/* Status Update Section - Available to Admin and Waiter */}
+      {canUpdateStatus && (
         <View style={styles.adminSection}>
           {order.status === 'completed' ? (
             <>
@@ -352,7 +361,7 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
                   console.log('🔍 PRINT DEBUG: Database riderContact:', order.customer.riderContact);
                   console.log('🔍 PRINT DEBUG: Full order customer data:', JSON.stringify(order.customer, null, 2));
                   console.log('🔍 PRINT DEBUG: Full order data:', JSON.stringify(order, null, 2));
-                  printTextReceipt(generateTextReceipt(order, menuItems, riderContactForReceipt));
+                  printTextReceipt(generateTextReceipt(order, menuItems, users, riderContactForReceipt));
                 }}
               >
                 <Text style={styles.printButtonText}>Print Receipt</Text>

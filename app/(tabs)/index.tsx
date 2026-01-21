@@ -88,7 +88,14 @@ export default function HomePage() {
   };
 
   const renderWaiterDashboard = () => {
-    const userOrders = orders.filter(order => order.createdBy === user?.id);
+    // Show all orders, not just orders created by this waiter
+    // This allows waiters to see orders created by admins and other staff
+    const allOrders = orders.sort((a, b) => {
+      // Sort by date (newest first)
+      const aDate = new Date(a.updatedAt || a.createdAt).getTime();
+      const bDate = new Date(b.updatedAt || b.createdAt).getTime();
+      return bDate - aDate;
+    });
 
     return (
       <SafeAreaView style={styles.container}>
@@ -96,15 +103,15 @@ export default function HomePage() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>My Orders</Text>
-          <Text style={styles.subtitle}>Track your orders</Text>
+          <Text style={styles.title}>All Orders</Text>
+          <Text style={styles.subtitle}>Track all restaurant orders</Text>
         </View>
 
         <View style={styles.section}>
-          {userOrders.length === 0 ? (
+          {allOrders.length === 0 ? (
             <Text style={styles.emptyText}>No orders yet. Create your first order!</Text>
           ) : (
-            userOrders.map((order) => (
+            allOrders.map((order) => (
               <OrderCard key={order.id} order={order} />
             ))
           )}

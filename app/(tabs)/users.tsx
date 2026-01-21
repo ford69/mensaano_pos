@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,11 +12,25 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Picker } from '@react-native-picker/picker';
 import { useRestaurant } from '@/contexts/RestaurantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { User } from '@/types';
 import { Plus, CreditCard as Edit, Trash2, Search, Users } from 'lucide-react-native';
 
 export default function UsersPage() {
+  const { user } = useAuth();
   const { users, addUser, updateUser, deleteUser } = useRestaurant();
+
+  // Restrict access to admin only
+  if (user?.role !== 'admin') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.restrictedContainer}>
+          <Text style={styles.restrictedText}>Access Denied</Text>
+          <Text style={styles.restrictedSubtext}>User management is only available to administrators.</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -154,11 +168,35 @@ interface UserModalProps {
 function UserModal({ visible, user, onClose, onSave }: UserModalProps) {
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<User['role']>(user?.role || 'waiter');
+  const isNewUser = !user;
+
+  // Reset form when modal opens/closes or user changes
+  useEffect(() => {
+    if (visible) {
+      setUsername(user?.username || '');
+      setEmail(user?.email || '');
+      setPassword('');
+      setRole(user?.role || 'waiter');
+    }
+  }, [visible, user]);
 
   const handleSave = () => {
     if (!username.trim() || !email.trim()) {
       Alert.alert('Error', 'Please fill in all required fields');
+      return;
+    }
+
+    // Password is required only when creating a new user
+    if (isNewUser && !password.trim()) {
+      Alert.alert('Error', 'Please enter a password for the new user');
+      return;
+    }
+
+    // Password validation: minimum 6 characters
+    if (isNewUser && password.trim().length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
       return;
     }
 
@@ -169,15 +207,23 @@ function UserModal({ visible, user, onClose, onSave }: UserModalProps) {
       return;
     }
 
-    onSave({
+    const userData: any = {
       username: username.trim(),
       email: email.trim(),
       role,
-    });
+    };
+
+    // Only include password when creating a new user
+    if (isNewUser && password.trim()) {
+      userData.password = password.trim();
+    }
+
+    onSave(userData);
 
     // Reset form
     setUsername('');
     setEmail('');
+    setPassword('');
     setRole('waiter');
   };
 
@@ -216,6 +262,21 @@ function UserModal({ visible, user, onClose, onSave }: UserModalProps) {
               autoCapitalize="none"
             />
           </View>
+
+          {isNewUser && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Password *</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Enter password (min 6 characters)"
+                secureTextEntry
+                autoCapitalize="none"
+              />
+              <Text style={styles.helperText}>Password must be at least 6 characters</Text>
+            </View>
+          )}
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Role</Text>
@@ -407,5 +468,27 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  restrictedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  restrictedText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    marginBottom: 12,
+  },
+  restrictedSubtext: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
   },
 });
