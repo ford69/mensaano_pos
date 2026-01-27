@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -162,20 +162,52 @@ interface MenuItemModalProps {
 }
 
 function MenuItemModal({ visible, item, onClose, onSave }: MenuItemModalProps) {
-  const [name, setName] = useState(item?.name || '');
-  const [category, setCategory] = useState(item?.category || 'Mains');
-  const [description, setDescription] = useState(item?.description || '');
-  const [available, setAvailable] = useState(item?.available ?? true);
+  const [name, setName] = useState('');
+  const [category, setCategory] = useState('Mains');
+  const [description, setDescription] = useState('');
+  const [available, setAvailable] = useState(true);
   
   // Pricing mode: 'single' or 'variants'
   const [pricingMode, setPricingMode] = useState<'single' | 'variants'>('single');
   
   // Single price state
-  const [singlePrice, setSinglePrice] = useState(item?.price?.toString() || '');
+  const [singlePrice, setSinglePrice] = useState('');
   
-  // Size variants state - start empty
+  // Size variants state
   const [sizeVariants, setSizeVariants] = useState<SizeVariant[]>([]);
   const [newSizeName, setNewSizeName] = useState('');
+
+  // Update form fields when item prop changes (for editing)
+  useEffect(() => {
+    if (item) {
+      // Editing existing item - populate form with existing data
+      setName(item.name || '');
+      setCategory(item.category || 'Mains');
+      setDescription(item.description || '');
+      setAvailable(item.available ?? true);
+      
+      // Determine pricing mode based on item data
+      if (item.sizeVariants && item.sizeVariants.length > 0) {
+        setPricingMode('variants');
+        setSizeVariants(item.sizeVariants);
+        setSinglePrice('');
+      } else {
+        setPricingMode('single');
+        setSinglePrice(item.price?.toString() || '');
+        setSizeVariants([]);
+      }
+    } else {
+      // Creating new item - reset form
+      setName('');
+      setCategory('Mains');
+      setDescription('');
+      setAvailable(true);
+      setPricingMode('single');
+      setSinglePrice('');
+      setSizeVariants([]);
+      setNewSizeName('');
+    }
+  }, [item, visible]);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -196,7 +228,7 @@ function MenuItemModal({ visible, item, onClose, onSave }: MenuItemModalProps) {
         description: description.trim(),
         available,
         price: priceNumber,
-        sizeVariants: undefined,
+        sizeVariants: [], // Clear size variants when using single price
       });
     } else {
       // Check if at least one size variant has a price
@@ -211,20 +243,12 @@ function MenuItemModal({ visible, item, onClose, onSave }: MenuItemModalProps) {
         category,
         description: description.trim(),
         available,
-        price: undefined,
+        price: null, // Clear single price when using size variants
         sizeVariants: sizeVariants.filter(variant => variant.price > 0), // Only include variants with prices
       });
     }
-
-    // Reset form
-    setName('');
-    setCategory('Mains');
-    setDescription('');
-    setAvailable(true);
-    setPricingMode('single');
-    setSinglePrice('');
-    setSizeVariants([]);
-    setNewSizeName('');
+    
+    // Form will be reset by useEffect when modal closes and item becomes null
   };
 
   const addSizeVariant = () => {
