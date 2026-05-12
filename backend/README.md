@@ -20,9 +20,9 @@
 
 ## API Endpoints
 
-- `GET    /api/orders`         - List all orders
-- `POST   /api/orders`         - Create new order
-- `PATCH  /api/orders/:id`     - Update order
+- `GET    /api/orders`         - List all orders (JWT)
+- `POST   /api/orders`         - Create new order (JWT)
+- `PATCH  /api/orders/:id`     - Update order (JWT)
 
 - `GET    /api/menu_items`     - List all menu items
 - `POST   /api/menu_items`     - Create new menu item
@@ -33,6 +33,13 @@
 - `POST   /api/users`          - Create new user
 - `PATCH  /api/users/:id`      - Update user
 - `DELETE /api/users/:id`      - Delete user
+
+### Third-party integration (`INTEGRATION_API_KEY` + header `X-API-Key`)
+
+- `GET    /api/integration/menu_items` - List menu items (same payload as public menu list)
+- `POST   /api/integration/orders`     - Create order; requires unique `externalOrderId` (retries return existing order)
+
+Full interactive-style documentation: `docs/openapi.yaml` (import into Postman or Swagger UI). Example requests: root `postman_collection.json`.
 
 ## Notes
 - The backend runs on port 4000 by default.

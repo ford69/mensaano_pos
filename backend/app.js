@@ -17,6 +17,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/orders', authMiddleware, require('./routes/orders'));
 app.use('/api/menu_items', require('./routes/menuItems'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/integration', require('./routes/integration'));
 
 app.get('/', (req, res) => res.send('POS API Running'));
 

@@ -1,71 +1,255 @@
 {
   "info": {
-    "name": "POS API Collection",
-    "description": "Collection for testing the POS API endpoints",
+    "name": "POS API — full collection",
+    "description": "All backend routes: auth, orders (JWT), menu, users, and third-party integration (X-API-Key). Import `docs/openapi.yaml` for the same contract in OpenAPI 3.\n\nSet `integrationApiKey` to match `INTEGRATION_API_KEY` in backend `.env`. Run **Auth > Login** first; the test script saves `authToken`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:4000" },
+    { "key": "authToken", "value": "" },
+    { "key": "integrationApiKey", "value": "" },
+    { "key": "orderId", "value": "" },
+    { "key": "menuItemId", "value": "" },
+    { "key": "userId", "value": "" }
+  ],
   "item": [
     {
-      "name": "Login",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\"\n}"
-        },
-        "url": {
-          "raw": "http://localhost:4000/api/auth/login",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "4000",
-          "path": ["api", "auth", "login"]
-        },
-        "description": "Login endpoint to authenticate users and receive JWT token"
-      },
-      "response": []
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/"
+          },
+          "response": []
+        }
+      ]
     },
     {
-      "name": "Register",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"waiter\"\n}"
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const j = pm.response.json();",
+                  "  if (j.token) pm.collectionVariables.set('authToken', j.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Sets collection variable `authToken` on success."
+          },
+          "response": []
         },
-        "url": {
-          "raw": "http://localhost:4000/api/auth/register",
-          "protocol": "http",
-          "host": ["localhost"],
-          "port": "4000",
-          "path": ["api", "auth", "register"]
-        },
-        "description": "Register a new user account"
-      },
-      "response": []
-    }
-  ],
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "http://localhost:4000",
-      "type": "string"
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"waiter\"\n}"
+            },
+            "url": "{{baseUrl}}/api/auth/register"
+          },
+          "response": []
+        }
+      ]
     },
     {
-      "key": "authToken",
-      "value": "",
-      "type": "string"
+      "name": "Orders (JWT)",
+      "item": [
+        {
+          "name": "List orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/orders"
+          },
+          "response": []
+        },
+        {
+          "name": "Create order",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"delivery\",\n  \"customer\": {\n    \"name\": \"Test Customer\",\n    \"phone\": \"0550000000\",\n    \"address\": \"Accra\"\n  },\n  \"items\": [\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"status\": \"pending\",\n  \"paymentStatus\": \"unpaid\"\n}"
+            },
+            "url": "{{baseUrl}}/api/orders",
+            "description": "Set `menuItemId` from List menu items response `_id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Patch order",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{authToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in-prep\",\n  \"updatedAt\": \"2026-05-12T12:00:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/orders/{{orderId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Menu items",
+      "item": [
+        {
+          "name": "List menu items",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/menu_items"
+          },
+          "response": []
+        },
+        {
+          "name": "Create menu item",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"API Test Item\",\n  \"category\": \"Test\",\n  \"available\": true,\n  \"price\": 10.5,\n  \"createdAt\": \"2026-05-12T00:00:00.000Z\",\n  \"updatedAt\": \"2026-05-12T00:00:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/menu_items"
+          },
+          "response": []
+        },
+        {
+          "name": "Patch menu item",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"available\": false,\n  \"updatedAt\": \"2026-05-12T00:00:00.000Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/menu_items/{{menuItemId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete menu item",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/menu_items/{{menuItemId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/users"
+          },
+          "response": []
+        },
+        {
+          "name": "Create user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"apiuser\",\n  \"email\": \"apiuser@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"waiter\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users"
+          },
+          "response": []
+        },
+        {
+          "name": "Patch user",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"kitchen\"\n}"
+            },
+            "url": "{{baseUrl}}/api/users/{{userId}}"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete user",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/users/{{userId}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Integration (X-API-Key)",
+      "item": [
+        {
+          "name": "List menu items (integration)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-API-Key", "value": "{{integrationApiKey}}" }],
+            "url": "{{baseUrl}}/api/integration/menu_items"
+          },
+          "response": []
+        },
+        {
+          "name": "Create order (integration)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-API-Key", "value": "{{integrationApiKey}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"externalOrderId\": \"postman-test-001\",\n  \"source\": \"whatsapp_ai\",\n  \"type\": \"delivery\",\n  \"customer\": {\n    \"name\": \"Integration Customer\",\n    \"phone\": \"0550000001\",\n    \"address\": \"Accra\"\n  },\n  \"items\": [\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"status\": \"pending\",\n  \"paymentStatus\": \"paid\"\n}"
+            },
+            "url": "{{baseUrl}}/api/integration/orders",
+            "description": "Change `externalOrderId` for each new order; repeat same id to test idempotency (200 + same body)."
+          },
+          "response": []
+        }
+      ]
     }
   ]
-} 
+}

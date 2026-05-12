@@ -44,6 +44,9 @@ export interface Order {
   items: OrderItem[];
   status: 'pending' | 'in-prep' | 'ready' | 'served' | 'dispatched' | 'delivered' | 'completed';
   createdBy: string;
+  /** Idempotency / trace id when order is created via POST /api/integration/orders */
+  externalOrderId?: string;
+  source?: string;
   paymentStatus: 'paid' | 'unpaid' | 'partial';
   specialInstructions?: string;
   createdAt: string;

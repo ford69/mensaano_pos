@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { MenuItem, Order, User } from '@/types';
 import { useAuth } from './AuthContext';
 import { API_URL } from '@/config/api';
@@ -22,6 +22,8 @@ interface RestaurantContextType {
   getTodaysOrders: () => Order[];
   getCompletedOrdersLast6Days: () => Order[];
   loading: boolean;
+  /** Reload menu, orders (if logged in), and users from the API */
+  refresh: () => Promise<void>;
 }
 
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
@@ -33,20 +35,15 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all data on mount or when token changes
-  useEffect(() => {
-    if (token) {
-      loadAll();
-    }
-  }, [token]);
-
-  const loadAll = async () => {
+  const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      // Load all data in parallel for better performance
+      if (!token) {
+        setOrders([]);
+      }
+
       const promises = [];
-      
-      // Menu Items (public)
+
       promises.push(
         fetch(`${API_URL}/menu_items`)
           .then(res => res.json())
@@ -61,15 +58,21 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             if (__DEV__) console.error('Error loading menu items:', e);
           })
       );
-      
-      // Orders (protected) - only if token exists
+
       if (token) {
         promises.push(
           fetch(`${API_URL}/orders`, {
             headers: { Authorization: `Bearer ${token}` },
           })
-            .then(res => res.json())
+            .then(async res => {
+              if (!res.ok) {
+                if (__DEV__) console.error('Error loading orders:', res.status, await res.text());
+                return;
+              }
+              return res.json();
+            })
             .then(ordersData => {
+              if (!Array.isArray(ordersData)) return;
               const transformedOrders = ordersData.map((order: any) => ({
                 ...order,
                 id: order._id,
@@ -81,8 +84,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             })
         );
       }
-      
-      // Users (public)
+
       promises.push(
         fetch(`${API_URL}/users`)
           .then(res => res.json())
@@ -97,8 +99,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             if (__DEV__) console.error('Error loading users:', e);
           })
       );
-      
-      // Wait for all requests to complete
+
       await Promise.allSettled(promises);
     } catch (e) {
       if (__DEV__) {
@@ -107,7 +108,11 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    void loadAll();
+  }, [loadAll]);
 
   // Menu Items
   const addMenuItem = async (item: Omit<MenuItem, 'id'>) => {
@@ -269,6 +274,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
         getTodaysOrders,
         getCompletedOrdersLast6Days,
         loading,
+        refresh: loadAll,
       }}
     >
       {children}

@@ -180,13 +180,19 @@ async function printTextReceipt(receiptText: string) {
   });
 }
 
+export type PrintReceiptEvent =
+  | { phase: 'start'; orderId: string }
+  | { phase: 'success'; orderId: string }
+  | { phase: 'error'; orderId: string; error: unknown };
+
 interface OrderCardProps {
   order: Order;
   onPress?: () => void;
   showActions?: boolean;
+  onPrintReceipt?: (event: PrintReceiptEvent) => void;
 }
 
-export default function OrderCard({ order, onPress, showActions = false }: OrderCardProps) {
+export default function OrderCard({ order, onPress, showActions = false, onPrintReceipt }: OrderCardProps) {
   const { menuItems, users, updateOrderStatus, updateOrder } = useRestaurant();
   const { user } = useAuth();
   
@@ -361,7 +367,14 @@ export default function OrderCard({ order, onPress, showActions = false }: Order
                   console.log('🔍 PRINT DEBUG: Database riderContact:', order.customer.riderContact);
                   console.log('🔍 PRINT DEBUG: Full order customer data:', JSON.stringify(order.customer, null, 2));
                   console.log('🔍 PRINT DEBUG: Full order data:', JSON.stringify(order, null, 2));
-                  printTextReceipt(generateTextReceipt(order, menuItems, users, riderContactForReceipt));
+                  onPrintReceipt?.({ phase: 'start', orderId: order.id });
+                  printTextReceipt(generateTextReceipt(order, menuItems, users, riderContactForReceipt))
+                    .then(() => {
+                      onPrintReceipt?.({ phase: 'success', orderId: order.id });
+                    })
+                    .catch((err: unknown) => {
+                      onPrintReceipt?.({ phase: 'error', orderId: order.id, error: err });
+                    });
                 }}
               >
                 <Text style={styles.printButtonText}>Print Receipt</Text>

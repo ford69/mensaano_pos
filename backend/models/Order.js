@@ -20,6 +20,10 @@ const OrderSchema = new mongoose.Schema({
   paymentStatus: String,
   specialInstructions: String,
   createdBy: String,
+  /** Set by POST /api/integration/orders for idempotent third-party ingestion */
+  externalOrderId: { type: String, sparse: true, unique: true },
+  /** e.g. whatsapp_ai, third_party */
+  source: String,
   createdAt: String,
   updatedAt: String,
 });

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,94 @@ import {
   TouchableOpacity,
   TextInput,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useRestaurant } from '@/contexts/RestaurantContext';
 import { Order } from '@/types';
-import OrderCard from '@/components/OrderCard';
+import OrderCard, { PrintReceiptEvent } from '@/components/OrderCard';
 import { Search, Filter, ShoppingCart } from 'lucide-react-native';
 
 export default function OrdersPage() {
   const router = useRouter();
-  const { orders, updateOrderStatus, updatePaymentStatus } = useRestaurant();
+  const { orders, updateOrderStatus, updatePaymentStatus, refresh } = useRestaurant();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<Order['status'] | 'all'>('all');
+  const [listRefreshing, setListRefreshing] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh])
+  );
+
+  const onListRefresh = useCallback(async () => {
+    setListRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setListRefreshing(false);
+    }
+  }, [refresh]);
+
+  const prevOrdersRef = useRef<Order[] | null>(null);
+  const ordersHydratedRef = useRef(false);
+
+  useEffect(() => {
+    const prev = prevOrdersRef.current;
+    if (!ordersHydratedRef.current) {
+      ordersHydratedRef.current = true;
+      prevOrdersRef.current = orders;
+      return;
+    }
+    if (!prev) {
+      prevOrdersRef.current = orders;
+      return;
+    }
+
+    const prevById = new Map(prev.map(o => [o.id, o]));
+    const prevIds = new Set(prev.map(o => o.id));
+
+    for (const o of orders) {
+      if (!prevIds.has(o.id)) {
+        console.log('[Orders] Order created (new in list)', {
+          orderId: o.id,
+          shortId: o.id.slice(-6),
+          status: o.status,
+          type: o.type,
+        });
+      } else {
+        const before = prevById.get(o.id);
+        if (before && before.status !== 'completed' && o.status === 'completed') {
+          console.log('[Orders] Order completed', {
+            orderId: o.id,
+            shortId: o.id.slice(-6),
+            previousStatus: before.status,
+          });
+        }
+      }
+    }
+
+    prevOrdersRef.current = orders;
+  }, [orders]);
+
+  const logPrintReceipt = useCallback((event: PrintReceiptEvent) => {
+    if (event.phase === 'start') {
+      console.log('[Orders] Print receipt: starting', { orderId: event.orderId, shortId: event.orderId.slice(-6) });
+      return;
+    }
+    if (event.phase === 'success') {
+      console.log('[Orders] Print receipt: finished', { orderId: event.orderId, shortId: event.orderId.slice(-6) });
+      return;
+    }
+    console.error('[Orders] Print receipt: failed', {
+      orderId: event.orderId,
+      shortId: event.orderId.slice(-6),
+      error: event.error,
+    });
+  }, []);
 
   const filteredOrders = useMemo(() => {
     const filtered = orders.filter(order => {
@@ -49,8 +124,8 @@ export default function OrdersPage() {
   }, [orders, searchQuery, statusFilter]);
 
   const renderOrder = useCallback(({ item }: { item: Order }) => (
-    <OrderCard key={item.id} order={item} />
-  ), []);
+    <OrderCard key={item.id} order={item} onPrintReceipt={logPrintReceipt} />
+  ), [logPrintReceipt]);
 
   const keyExtractor = useCallback((item: Order) => item.id, []);
 
@@ -75,7 +150,10 @@ export default function OrdersPage() {
             </View>
             <TouchableOpacity
               style={styles.createOrderButton}
-              onPress={() => router.push('/(tabs)/new-order')}
+              onPress={() => {
+                console.log('[Orders] Create order: opening new order screen');
+                router.push('/(tabs)/new-order');
+              }}
               activeOpacity={0.7}
             >
               <ShoppingCart color="#ffffff" size={18} />
@@ -125,6 +203,9 @@ export default function OrdersPage() {
         renderItem={renderOrder}
         keyExtractor={keyExtractor}
         contentContainerStyle={styles.ordersList}
+        refreshControl={
+          <RefreshControl refreshing={listRefreshing} onRefresh={onListRefresh} />
+        }
         ListEmptyComponent={
           <Text style={styles.emptyText}>No orders found</Text>
         }

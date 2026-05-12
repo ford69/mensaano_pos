@@ -1,0 +1,668 @@
+openapi: 3.0.3
+info:
+  title: POS Restaurant API
+  description: |
+    Backend for the POS app (Express + MongoDB).
+
+    **Staff / POS:** Most write operations use JWT from `POST /api/auth/login` (`Authorization: Bearer <token>`).
+    **Orders** require JWT. **Menu items** and **users** routes are currently unauthenticated on the server; treat them as internal and protect at the network layer until hardened.
+
+    **Third-party integration** (e.g. WhatsApp AI): use `GET /api/integration/menu_items` and `POST /api/integration/orders` with header `X-API-Key` (see `INTEGRATION_API_KEY` in backend `.env`).
+
+    **Note:** `GET /api/users` may return password hashes depending on Mongoose serialization; do not expose that endpoint publicly.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:4000
+    description: Local development
+  - url: https://api.mensaanogh.com
+    description: Production
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Orders
+  - name: Menu items
+  - name: Users
+  - name: Integration
+    description: Third-party server-to-server (API key)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    IntegrationApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            role:
+              type: string
+
+    RegisterRequest:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        role:
+          type: string
+          description: Defaults to waiter if omitted
+          enum: [admin, waiter, kitchen]
+
+    SizeVariant:
+      type: object
+      properties:
+        size:
+          type: string
+        price:
+          type: number
+        available:
+          type: boolean
+
+    MenuItem:
+      type: object
+      description: MongoDB document; `_id` is used as `menuItemId` when creating orders.
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        available:
+          type: boolean
+        price:
+          type: number
+        sizeVariants:
+          type: array
+          items:
+            $ref: "#/components/schemas/SizeVariant"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    OrderLineItem:
+      type: object
+      required: [menuItemId, quantity]
+      properties:
+        menuItemId:
+          type: string
+          description: MongoDB ObjectId string of a menu item
+        quantity:
+          type: integer
+          minimum: 1
+        size:
+          type: string
+        note:
+          type: string
+
+    Customer:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        riderContact:
+          type: string
+
+    Order:
+      type: object
+      properties:
+        _id:
+          type: string
+        type:
+          type: string
+          enum: [dine-in, delivery]
+        tableNumber:
+          type: number
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLineItem"
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        specialInstructions:
+          type: string
+        createdBy:
+          type: string
+        externalOrderId:
+          type: string
+          description: Present for integration-created orders; unique for idempotency.
+        source:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    OrderCreateStaff:
+      type: object
+      description: Body accepted by `POST /api/orders` (JWT). Server sets `createdBy` from the token.
+      properties:
+        type:
+          type: string
+          enum: [dine-in, delivery]
+        tableNumber:
+          type: number
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLineItem"
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        specialInstructions:
+          type: string
+
+    OrderPatch:
+      type: object
+      description: Partial update; all fields optional.
+      properties:
+        type:
+          type: string
+        tableNumber:
+          type: number
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLineItem"
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        specialInstructions:
+          type: string
+        updatedAt:
+          type: string
+
+    IntegrationOrderCreate:
+      type: object
+      required:
+        - externalOrderId
+        - type
+        - customer
+        - items
+        - status
+        - paymentStatus
+      properties:
+        externalOrderId:
+          type: string
+          description: |
+            Unique id from the bridge (e.g. WhatsApp message id). Same value on retry returns `200` with the existing order (idempotent).
+        source:
+          type: string
+          default: third_party
+          description: Stored on the order for reporting (e.g. whatsapp_ai).
+        type:
+          type: string
+          enum: [dine-in, delivery]
+        tableNumber:
+          type: number
+          description: Required when type is dine-in.
+        customer:
+          $ref: "#/components/schemas/Customer"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderLineItem"
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        specialInstructions:
+          type: string
+
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+          description: May be present (hashed); avoid exposing this API publicly.
+        role:
+          type: string
+        createdAt:
+          type: string
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      summary: API health
+      responses:
+        "200":
+          description: Plain text
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: POS API Running
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        "400":
+          description: Email already in use
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login (JWT for POS)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: JWT issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/orders:
+    get:
+      tags: [Orders]
+      summary: List all orders
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Array of orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: [Orders]
+      summary: Create order (staff)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderCreateStaff"
+      responses:
+        "200":
+          description: Created order document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/orders/{id}:
+    patch:
+      tags: [Orders]
+      summary: Update order
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderPatch"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/menu_items:
+    get:
+      tags: [Menu items]
+      summary: List menu items
+      security: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItem"
+    post:
+      tags: [Menu items]
+      summary: Create menu item
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuItem"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+
+  /api/menu_items/{id}:
+    patch:
+      tags: [Menu items]
+      summary: Update menu item
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+    delete:
+      tags: [Menu items]
+      summary: Delete menu item
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: List users
+      security: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      tags: [Users]
+      summary: Create user
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username:
+                  type: string
+                email:
+                  type: string
+                password:
+                  type: string
+                role:
+                  type: string
+      responses:
+        "200":
+          description: Created user (password field should be stripped in future)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /api/users/{id}:
+    patch:
+      tags: [Users]
+      summary: Update user
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      tags: [Users]
+      summary: Delete user
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /api/integration/menu_items:
+    get:
+      tags: [Integration]
+      summary: List menu items (third party)
+      description: Same data as `GET /api/menu_items`, but requires `X-API-Key`.
+      security:
+        - IntegrationApiKey: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItem"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          description: INTEGRATION_API_KEY not set on server
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/integration/orders:
+    post:
+      tags: [Integration]
+      summary: Create order from external bridge (idempotent)
+      description: |
+        Requires `X-API-Key`. `externalOrderId` must be unique; duplicates return **200** with the existing order.
+        New orders return **201**. `createdBy` is set from `INTEGRATION_ORDER_CREATED_BY` or defaults to `integration-external`.
+      security:
+        - IntegrationApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IntegrationOrderCreate"
+            examples:
+              delivery:
+                summary: Delivery example
+                value:
+                  externalOrderId: "wa-20260512-abc123"
+                  source: "whatsapp_ai"
+                  type: "delivery"
+                  customer:
+                    name: "Ama K."
+                    phone: "233551234567"
+                    address: "Spintex, Accra"
+                  items:
+                    - menuItemId: "REPLACE_WITH_REAL_MENU_ITEM_ID"
+                      quantity: 2
+                      size: "Large"
+                      note: "No onions"
+                  status: "pending"
+                  paymentStatus: "paid"
+                  specialInstructions: "Call on arrival"
+      responses:
+        "201":
+          description: New order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "200":
+          description: Same `externalOrderId` already ingested (idempotent replay)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
