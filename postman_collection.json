@@ -1,13 +1,13 @@
 {
   "info": {
     "name": "POS API — full collection",
-    "description": "All backend routes: auth, orders (JWT), menu, users, and third-party integration (X-API-Key). Import `docs/openapi.yaml` for the same contract in OpenAPI 3.\n\nSet `integrationApiKey` to match `INTEGRATION_API_KEY` in backend `.env`. Run **Auth > Login** first; the test script saves `authToken`.",
+    "description": "All backend routes: auth, orders (JWT), menu, users, and third-party integration (X-API-Key). Import `docs/openapi.yaml` for the same contract in OpenAPI 3.\n\nSet `clientSecret` to match `CLIENT_SECRET` in backend `.env`. Run **Auth > Login** first; the test script saves `authToken`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:4000" },
     { "key": "authToken", "value": "" },
-    { "key": "integrationApiKey", "value": "" },
+    { "key": "clientSecret", "value": "" },
     { "key": "orderId", "value": "" },
     { "key": "menuItemId", "value": "" },
     { "key": "userId", "value": "" }
@@ -227,7 +227,7 @@
           "name": "List menu items (integration)",
           "request": {
             "method": "GET",
-            "header": [{ "key": "X-API-Key", "value": "{{integrationApiKey}}" }],
+            "header": [{ "key": "X-API-Key", "value": "{{clientSecret}}" }],
             "url": "{{baseUrl}}/api/integration/menu_items"
           },
           "response": []
@@ -237,7 +237,7 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "X-API-Key", "value": "{{integrationApiKey}}" },
+              { "key": "X-API-Key", "value": "{{clientSecret}}" },
               { "key": "Content-Type", "value": "application/json" }
             ],
             "body": {

@@ -34,7 +34,7 @@
 - `PATCH  /api/users/:id`      - Update user
 - `DELETE /api/users/:id`      - Delete user
 
-### Third-party integration (`INTEGRATION_API_KEY` + header `X-API-Key`)
+### Third-party integration (`CLIENT_SECRET` + header `X-API-Key`)
 
 - `GET    /api/integration/menu_items` - List menu items (same payload as public menu list)
 - `POST   /api/integration/orders`     - Create order; requires unique `externalOrderId` (retries return existing order)

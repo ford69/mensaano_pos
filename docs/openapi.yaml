@@ -7,7 +7,7 @@ info:
     **Staff / POS:** Most write operations use JWT from `POST /api/auth/login` (`Authorization: Bearer <token>`).
     **Orders** require JWT. **Menu items** and **users** routes are currently unauthenticated on the server; treat them as internal and protect at the network layer until hardened.
 
-    **Third-party integration** (e.g. WhatsApp AI): use `GET /api/integration/menu_items` and `POST /api/integration/orders` with header `X-API-Key` (see `INTEGRATION_API_KEY` in backend `.env`).
+    **Third-party integration** (e.g. WhatsApp AI): use `GET /api/integration/menu_items` and `POST /api/integration/orders` with header `X-API-Key` (see `CLIENT_SECRET` in backend `.env`).
 
     **Note:** `GET /api/users` may return password hashes depending on Mongoose serialization; do not expose that endpoint publicly.
   version: "1.0.0"
@@ -593,7 +593,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
         "503":
-          description: INTEGRATION_API_KEY not set on server
+          description: CLIENT_SECRET not set on server
           content:
             application/json:
               schema:
