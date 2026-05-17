@@ -29,17 +29,21 @@ interface RestaurantContextType {
 const RestaurantContext = createContext<RestaurantContextType | undefined>(undefined);
 
 export function RestaurantProvider({ children }: { children: React.ReactNode }) {
-  const { token } = useAuth();
+  const { token, loading: authLoading, logout } = useAuth();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
+    if (authLoading) return;
+
     setLoading(true);
     try {
       if (!token) {
         setOrders([]);
+        setLoading(false);
+        return;
       }
 
       const promises = [];
@@ -65,6 +69,10 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
             headers: { Authorization: `Bearer ${token}` },
           })
             .then(async res => {
+              if (res.status === 401) {
+                await logout();
+                return;
+              }
               if (!res.ok) {
                 if (__DEV__) console.error('Error loading orders:', res.status, await res.text());
                 return;
@@ -108,7 +116,7 @@ export function RestaurantProvider({ children }: { children: React.ReactNode }) 
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, authLoading, logout]);
 
   useEffect(() => {
     void loadAll();

@@ -22,7 +22,12 @@ export default function ExternalOrdersSummaryCard({
     const activeCount = orders.filter((o) =>
       ['pending', 'in-prep', 'ready'].includes(o.status)
     ).length;
-    const preview = orders.slice(0, 5);
+    const preview = [...orders]
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
+      .slice(0, 4);
     return { todayCount, activeCount, preview };
   }, [orders]);
 
@@ -39,7 +44,8 @@ export default function ExternalOrdersSummaryCard({
           <View style={styles.headerText}>
             <Text style={styles.title}>WhatsApp orders</Text>
             <Text style={styles.subtitle}>
-              WhatsApp orders — {orders.length} total
+              {orders.length} total
+              {orders.length > 4 ? ' · showing 4 most recent' : ''}
             </Text>
           </View>
         </View>
@@ -60,7 +66,7 @@ export default function ExternalOrdersSummaryCard({
             <Inbox color="#94a3b8" size={36} strokeWidth={1.5} />
             <Text style={styles.emptyTitle}>No WhatsApp orders yet</Text>
             <Text style={styles.emptyHint}>
-             
+              New WhatsApp orders will appear here.
             </Text>
           </View>
         ) : (
@@ -97,7 +103,8 @@ export default function ExternalOrdersSummaryCard({
 const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    marginBottom: 20,
+    marginTop: 0,
+    marginBottom: 16,
     borderRadius: 20,
     backgroundColor: '#ffffff',
     overflow: 'hidden',

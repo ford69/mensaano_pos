@@ -209,7 +209,9 @@ export default function HomePage() {
           </View>
         </View>
 
-        <ExternalOrdersSummaryCard orders={externalOrders} onViewAll={goToOrders} />
+        <View style={styles.whatsappSection}>
+          <ExternalOrdersSummaryCard orders={externalOrders} onViewAll={goToOrders} />
+        </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -369,6 +371,10 @@ const styles = StyleSheet.create({
   statsSection: {
     paddingHorizontal: 16,
     paddingTop: 12,
+    paddingBottom: 0,
+  },
+  whatsappSection: {
+    marginTop: 12,
   },
   sectionHeading: {
     fontSize: 13,

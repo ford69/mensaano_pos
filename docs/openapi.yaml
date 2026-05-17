@@ -10,6 +10,8 @@ info:
     **Third-party integration** (e.g. WhatsApp AI): use `GET /api/integration/menu_items` and `POST /api/integration/orders` with header `X-API-Key` (see `CLIENT_SECRET` in backend `.env`).
 
     **Note:** `GET /api/users` may return password hashes depending on Mongoose serialization; do not expose that endpoint publicly.
+
+    **Rate limits:** `POST /api/auth/login` and `POST /api/auth/register` and all `/api/integration/*` routes are rate-limited (HTTP **429** when exceeded). See backend `README.md` for defaults and env overrides.
   version: "1.0.0"
 
 servers:

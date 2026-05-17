@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "POS API — full collection",
-    "description": "All backend routes: auth, orders (JWT), menu, users, and third-party integration (X-API-Key). Import `docs/openapi.yaml` for the same contract in OpenAPI 3.\n\nSet `clientSecret` to match `CLIENT_SECRET` in backend `.env`. Run **Auth > Login** first; the test script saves `authToken`.",
+    "description": "All backend routes: auth, orders (JWT), menu, users, and third-party integration (X-API-Key). Import `docs/openapi.yaml` for the same contract in OpenAPI 3.\n\n**Production:** set collection variable `baseUrl` to `https://api.mensaanogh.com` (HTTPS only, no trailing slash). Requests use paths like `/api/integration/orders`. Using `http://` can redirect and turn POST into GET → 404 \"Cannot GET\".\n\n**Local:** `http://localhost:4000`. Set `clientSecret` to match `CLIENT_SECRET` in backend `.env`. Run **Auth > Login** first; the test script saves `authToken`.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [

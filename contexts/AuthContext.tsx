@@ -29,40 +29,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedToken = await AsyncStorage.getItem('token');
         
         if (storedToken) {
-          setToken(storedToken);
-          // Try to fetch user info from backend using token
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-            
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+
             const res = await fetch(`${API_URL}/auth/me`, {
               headers: { Authorization: `Bearer ${storedToken}` },
               signal: controller.signal,
             });
-            
+
             clearTimeout(timeoutId);
-            
+
             if (res.ok) {
-              // Check if response is JSON before parsing
               const contentType = res.headers.get('content-type');
               if (contentType && contentType.includes('application/json')) {
                 const userData = await res.json();
-                setUser(userData);
+                setToken(storedToken);
+                setUser({
+                  id: String(userData.id),
+                  username: userData.username,
+                  email: userData.email ?? '',
+                  role: userData.role,
+                  createdAt: userData.createdAt ?? '',
+                });
               } else {
-                // Invalid response format, remove token
                 await AsyncStorage.removeItem('token');
-                setToken(null);
               }
             } else {
-              // Token is invalid, remove it
               await AsyncStorage.removeItem('token');
-              setToken(null);
             }
           } catch (err) {
             if (__DEV__) {
               console.error('Error loading user:', err);
             }
-            // Don't remove token on network errors, just set loading to false
+            await AsyncStorage.removeItem('token');
           }
         }
       } catch (err) {
@@ -110,7 +110,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok && data.token) {
         await AsyncStorage.setItem('token', data.token);
         setToken(data.token);
-        setUser(data.user);
+        setUser({
+          id: String(data.user.id),
+          username: data.user.username,
+          email: data.user.email ?? '',
+          role: data.user.role,
+          createdAt: data.user.createdAt ?? '',
+        });
         setLoading(false);
         return true;
       } else {

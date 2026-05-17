@@ -41,6 +41,20 @@
 
 Full interactive-style documentation: `docs/openapi.yaml` (import into Postman or Swagger UI). Example requests: root `postman_collection.json`.
 
+## Rate limiting
+
+Per-IP limits (returns **429** JSON `{ error: "…" }` plus `RateLimit-*` headers):
+
+| Area | Default | Notes |
+|------|---------|--------|
+| `POST /api/auth/login` | 30 failures / 15 min | Successful logins are not counted (`skipSuccessfulRequests`). |
+| `POST /api/auth/register` | 15 / hour | Every attempt counts. |
+| `/api/integration/*` | 120 / minute | Menu + order ingestion combined. |
+
+Override with env: `RATE_LIMIT_LOGIN_MAX`, `RATE_LIMIT_LOGIN_WINDOW_MS`, `RATE_LIMIT_REGISTER_MAX`, `RATE_LIMIT_REGISTER_WINDOW_MS`, `RATE_LIMIT_INTEGRATION_MAX`, `RATE_LIMIT_INTEGRATION_WINDOW_MS` (window values in milliseconds).
+
+Behind a reverse proxy (nginx, Render, Railway, etc.), set **`TRUST_PROXY=1`** in `.env` so the client IP is taken from `X-Forwarded-For` and limits apply correctly.
+
 ## Notes
 - The backend runs on port 4000 by default.
 - You can deploy this backend to Heroku, Render, Railway, or any Node.js host. 

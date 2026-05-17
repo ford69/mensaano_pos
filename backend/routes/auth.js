@@ -3,9 +3,11 @@ const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { authLoginLimiter, authRegisterLimiter } = require('../middleware/rateLimits');
+const authMiddleware = require('../middleware/auth');
 
 // Register
-router.post('/register', async (req, res) => {
+router.post('/register', authRegisterLimiter, async (req, res) => {
   const { username, email, password, role } = req.body;
   const existing = await User.findOne({ email });
   if (existing) return res.status(400).json({ error: 'Email already in use' });
@@ -23,7 +25,7 @@ router.post('/register', async (req, res) => {
 });
 
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', authLoginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
     console.log('[LOGIN] Attempt with username:', username);
@@ -68,6 +70,15 @@ router.post('/login', async (req, res) => {
     console.error('[LOGIN] Error during login:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Current user from JWT (session restore on app launch)
+router.get('/me', authMiddleware, (req, res) => {
+  res.json({
+    id: req.user.id,
+    username: req.user.username,
+    role: req.user.role,
+  });
 });
 
 module.exports = router; 

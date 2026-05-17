@@ -1,42 +1,30 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, ChefHat, ShoppingCart, ChartBar as BarChart3, Settings, ClipboardList, PlusCircle } from 'lucide-react-native';
+import {
+  User,
+  ChefHat,
+  ShoppingCart,
+  ChartBar as BarChart3,
+  Settings,
+  ClipboardList,
+  PlusCircle,
+} from 'lucide-react-native';
 
 export default function TabLayout() {
   const { user } = useAuth();
 
   if (!user) return null;
 
-  const getTabsForRole = () => {
-    switch (user.role) {
-      case 'admin':
-        return [
-          { name: 'index', title: 'Dashboard', icon: BarChart3 },
-          { name: 'orders', title: 'Orders', icon: ClipboardList },
-          { name: 'menu', title: 'Menu', icon: ShoppingCart },
-          { name: 'users', title: 'Users', icon: User },
-          { name: 'profile', title: 'Profile', icon: Settings },
-          { name: 'new-order', title: 'New Order', icon: PlusCircle }
-        ];
-      case 'waiter':
-        return [
-          { name: 'index', title: 'Orders', icon: ClipboardList },
-          { name: 'new-order', title: 'New Order', icon: PlusCircle },
-          { name: 'profile', title: 'Profile', icon: Settings },
-        ];
-      case 'kitchen':
-        return [
-          { name: 'index', title: 'Kitchen', icon: ChefHat },
-          { name: 'profile', title: 'Profile', icon: Settings },
-        ];
-      default:
-        return [];
-    }
-  };
+  const role = user.role;
+  const isAdmin = role === 'admin';
+  const isWaiter = role === 'waiter';
+  const isKitchen = role === 'kitchen';
 
-  const tabs = getTabsForRole();
-  const isAdmin = user.role === 'admin';
+  const tabBarIcon =
+    (Icon: typeof BarChart3) =>
+    ({ color, size }: { color: string; size: number }) =>
+      <Icon color={color} size={size} />;
 
   return (
     <Tabs
@@ -54,27 +42,54 @@ export default function TabLayout() {
         },
       }}
     >
-      {tabs.map((tab) => (
-        <Tabs.Screen
-          key={tab.name}
-          name={tab.name}
-          options={{
-            title: tab.title,
-            tabBarIcon: ({ color, size }) => (
-              <tab.icon color={color} size={size} />
-            ),
-          }}
-        />
-      ))}
-      {/* Explicitly hide Users tab for non-admin roles */}
-      {!isAdmin && (
-        <Tabs.Screen
-          name="users"
-          options={{
-            href: null, // This completely hides the tab from the tab bar
-          }}
-        />
-      )}
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: isAdmin ? 'Dashboard' : isKitchen ? 'Kitchen' : 'Orders',
+          href: isAdmin || isWaiter || isKitchen ? undefined : null,
+          tabBarIcon: tabBarIcon(isAdmin ? BarChart3 : isKitchen ? ChefHat : ClipboardList),
+        }}
+      />
+      <Tabs.Screen
+        name="orders"
+        options={{
+          title: 'Orders',
+          href: isAdmin ? undefined : null,
+          tabBarIcon: tabBarIcon(ClipboardList),
+        }}
+      />
+      <Tabs.Screen
+        name="menu"
+        options={{
+          title: 'Menu',
+          href: isAdmin ? undefined : null,
+          tabBarIcon: tabBarIcon(ShoppingCart),
+        }}
+      />
+      <Tabs.Screen
+        name="users"
+        options={{
+          title: 'Users',
+          href: isAdmin ? undefined : null,
+          tabBarIcon: tabBarIcon(User),
+        }}
+      />
+      <Tabs.Screen
+        name="new-order"
+        options={{
+          title: 'New Order',
+          href: isAdmin || isWaiter ? undefined : null,
+          tabBarIcon: tabBarIcon(PlusCircle),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          href: undefined,
+          tabBarIcon: tabBarIcon(Settings),
+        }}
+      />
     </Tabs>
   );
 }
