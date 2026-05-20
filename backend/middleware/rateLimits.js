@@ -1,8 +1,23 @@
-const rateLimit = require('express-rate-limit');
-
 function intEnv(name, fallback) {
   const v = parseInt(process.env[name], 10);
   return Number.isFinite(v) && v > 0 ? v : fallback;
+}
+
+const noop = (_req, _res, next) => next();
+
+let rateLimit;
+try {
+  rateLimit = require('express-rate-limit');
+} catch (err) {
+  console.warn(
+    '[rateLimits] express-rate-limit is not installed — rate limiting disabled. Run: cd backend && npm install'
+  );
+  module.exports = {
+    authLoginLimiter: noop,
+    authRegisterLimiter: noop,
+    integrationLimiter: noop,
+  };
+  return;
 }
 
 /** Brute-force protection: only failed attempts count toward cap when skipSuccessfulRequests is true */

@@ -11,11 +11,20 @@
    cp .env.example .env
    # Edit .env and set MONGO_URI
    ```
-3. Start the server:
+3. Install dependencies (required after every pull that changes `package.json`):
+   ```sh
+   npm install
+   ```
+4. Start the server:
    ```sh
    npm start
    # or for development with auto-reload:
    npm run dev
+   ```
+
+**Production (PM2):** after deploy, always run `npm install` inside `backend/`, then restart:
+   ```sh
+   cd /home/ford192/mensaano_pos/backend && npm install && pm2 restart mensaano-api
    ```
 
 ## API Endpoints
