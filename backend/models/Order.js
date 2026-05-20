@@ -11,9 +11,13 @@ const OrderSchema = new mongoose.Schema({
   items: [
     {
       menuItemId: String,
+      /** Display name when line is custom or for integration audit */
+      name: String,
       quantity: Number,
       size: String,
       note: String,
+      /** Optional price per unit when item is not linked to menu (integration) */
+      unitPrice: Number,
     }
   ],
   status: String,

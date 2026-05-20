@@ -24,9 +24,13 @@ export interface MenuItem {
 
 export interface OrderItem {
   menuItemId: string;
+  /** Human-readable name (integration custom lines or snapshot) */
+  name?: string;
   size?: string; // Optional size for items with variants
   quantity: number;
   note?: string;
+  /** Per-unit price when not linked to menu */
+  unitPrice?: number;
 }
 
 export interface Customer {

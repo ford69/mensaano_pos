@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import StatusBadge from './StatusBadge';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import * as Print from 'expo-print';
+import { getLineDisplayName, getLineLineTotal } from '@/utils/orderLine';
 
 function generateTextReceipt(order: Order, menuItems: any[], users: any[], currentRiderContact?: string) {
   const date = new Date(order.createdAt);
@@ -80,28 +81,15 @@ function generateTextReceipt(order: Order, menuItems: any[], users: any[], curre
   
   let subtotal = 0;
   order.items.forEach((item: any) => {
-    const menuItem = menuItems.find((m: any) => m.id === item.menuItemId);
-    if (menuItem) {
-      let total = 0;
-      let displayName = menuItem.name;
-      
-      if (item.size && menuItem.sizeVariants) {
-        const variant = menuItem.sizeVariants.find((v: any) => v.size === item.size);
-        total = variant ? variant.price * item.quantity : 0;
-        displayName = `${menuItem.name} (${item.size})`;
-      } else {
-        total = (menuItem.price || 0) * item.quantity;
-      }
-      subtotal += total;
-      
-      // Format item line for 80mm paper
-      const itemLine = `${displayName.slice(0, 20).padEnd(20)} ${String(item.quantity).padStart(2)}  ₵${total.toFixed(2)}`;
-      lines.push(itemLine);
-      
-      // Add note if present
-      if (item.note) {
-        lines.push(`  Note: ${item.note}`);
-      }
+    const lineTotal = getLineLineTotal(item, menuItems);
+    const displayName = getLineDisplayName(item, menuItems);
+    subtotal += lineTotal;
+
+    const itemLine = `${displayName.slice(0, 20).padEnd(20)} ${String(item.quantity).padStart(2)}  ₵${lineTotal.toFixed(2)}`;
+    lines.push(itemLine);
+
+    if (item.note) {
+      lines.push(`  Note: ${item.note}`);
     }
   });
   
@@ -206,19 +194,8 @@ export default function OrderCard({ order, onPress, showActions = false, onPrint
   const isWaiter = user?.role === 'waiter';
   const canUpdateStatus = isAdmin || isWaiter; // Allow both admin and waiter to update order status
 
-  const getOrderTotal = () => {
-    return order.items.reduce((total, item) => {
-      const menuItem = menuItems.find(m => m.id === item.menuItemId);
-      if (!menuItem) return total;
-      
-      if (item.size && menuItem.sizeVariants) {
-        const variant = menuItem.sizeVariants.find(v => v.size === item.size);
-        return total + (variant ? variant.price * item.quantity : 0);
-      } else {
-        return total + ((menuItem.price || 0) * item.quantity);
-      }
-    }, 0);
-  };
+  const getOrderTotal = () =>
+    order.items.reduce((total, item) => total + getLineLineTotal(item, menuItems), 0);
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
@@ -304,13 +281,8 @@ export default function OrderCard({ order, onPress, showActions = false, onPrint
 
         <View style={styles.items}>
           {order.items.map((item, index) => {
-            const menuItem = menuItems.find(m => m.id === item.menuItemId);
-            let displayName = menuItem?.name || 'Unknown Item';
-            
-            if (item.size && menuItem?.sizeVariants) {
-              displayName = `${menuItem.name} (${item.size})`;
-            }
-            
+            const displayName = getLineDisplayName(item, menuItems);
+
             return (
               <Text key={index} style={styles.item}>
                 {displayName} x{item.quantity}

@@ -37,9 +37,9 @@
 ### Third-party integration (`CLIENT_SECRET` + header `X-API-Key`)
 
 - `GET    /api/integration/menu_items` - List menu items (same payload as public menu list)
-- `POST   /api/integration/orders`     - Create order; requires unique `externalOrderId` (retries return existing order)
+- `POST   /api/integration/orders`     - Create order; requires unique `externalOrderId` (retries return existing order). Each line needs **menuItemId** and/or **name** (matched to menu when possible; otherwise stored as custom line with optional **unitPrice**).
 
-Full interactive-style documentation: `docs/openapi.yaml` (import into Postman or Swagger UI). Example requests: root `postman_collection.json`.
+Full interactive-style documentation: `docs/openapi.yaml` (import into Postman or Swagger UI). Partner guide for flexible line items: `docs/INTEGRATION_ORDERS_API.md`. Example requests: root `postman_collection.json`.
 
 ## Rate limiting
 

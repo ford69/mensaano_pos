@@ -4,6 +4,7 @@ const MenuItem = require('../models/MenuItem');
 const Order = require('../models/Order');
 const hubtelSmsService = require('../services/hubtelSmsService');
 const integrationAuth = require('../middleware/integrationAuth');
+const { resolveIntegrationItems } = require('../services/integrationItemResolver');
 
 const router = express.Router();
 router.use(integrationAuth);
@@ -60,20 +61,13 @@ router.post('/orders', async (req, res) => {
       return res.status(400).json({ error: 'status and paymentStatus are required' });
     }
 
-    for (const line of items) {
-      if (!line.menuItemId || !mongoose.Types.ObjectId.isValid(line.menuItemId)) {
-        return res.status(400).json({ error: `Invalid menuItemId: ${line.menuItemId}` });
-      }
-      const qty = Number(line.quantity);
-      if (!Number.isFinite(qty) || qty < 1) {
-        return res.status(400).json({ error: 'Each item requires quantity >= 1' });
-      }
-    }
-
-    const menuIds = items.map((i) => i.menuItemId);
-    const foundCount = await MenuItem.countDocuments({ _id: { $in: menuIds } });
-    if (foundCount !== menuIds.length) {
-      return res.status(400).json({ error: 'One or more menuItemId values do not exist' });
+    const menuItems = await MenuItem.find();
+    const resolved = resolveIntegrationItems(items, menuItems);
+    if (resolved.error) {
+      return res.status(400).json({
+        error: resolved.error,
+        itemIndex: resolved.index,
+      });
     }
 
     const now = new Date().toISOString();
@@ -86,12 +80,7 @@ router.post('/orders', async (req, res) => {
         address: customer.address ? String(customer.address).trim() : undefined,
         riderContact: customer.riderContact ? String(customer.riderContact).trim() : undefined,
       },
-      items: items.map((line) => ({
-        menuItemId: String(line.menuItemId),
-        quantity: Number(line.quantity),
-        size: line.size ? String(line.size) : undefined,
-        note: line.note ? String(line.note) : undefined,
-      })),
+      items: resolved.items,
       status,
       paymentStatus,
       specialInstructions: specialInstructions ? String(specialInstructions) : undefined,
@@ -113,22 +102,29 @@ router.post('/orders', async (req, res) => {
       throw saveErr;
     }
 
+    const matchedCount = resolved.items.filter((i) => i.menuItemId).length;
     console.log('[integration] order persisted', {
       orderId: String(order._id),
       externalOrderId: trimmedExternalId,
       dbName: mongoose.connection?.db?.databaseName,
+      lines: resolved.items.length,
+      menuMatched: matchedCount,
+      customLines: resolved.warnings.length,
     });
 
     try {
       if (order.customer.phone) {
-        const menuItems = await MenuItem.find();
         await hubtelSmsService.sendOrderConfirmation(order, menuItems);
       }
     } catch (smsError) {
       console.error('Integration order SMS:', smsError.message);
     }
 
-    return res.status(201).json(order);
+    const body = order.toObject();
+    if (resolved.warnings.length > 0) {
+      body._integrationWarnings = resolved.warnings;
+    }
+    return res.status(201).json(body);
   } catch (err) {
     console.error('Integration orders POST:', err);
     return res.status(500).json({ error: 'Failed to create order' });

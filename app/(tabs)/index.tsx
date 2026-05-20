@@ -17,6 +17,7 @@ import { Order } from '@/types';
 import OrderCard from '@/components/OrderCard';
 import StatusBadge from '@/components/StatusBadge';
 import ExternalOrdersSummaryCard from '@/components/ExternalOrdersSummaryCard';
+import { getLineLineTotal } from '@/utils/orderLine';
 import {
   ShoppingBag,
   Clock,
@@ -121,18 +122,11 @@ export default function HomePage() {
   }, [orders]);
 
   const totalRevenue = useMemo(() => {
-    return todaysOrders.reduce((sum, order) => {
-      const line = order.items.reduce((total, item) => {
-        const menuItem = menuItems.find((m) => m.id === item.menuItemId);
-        if (!menuItem) return total;
-        if (item.size && menuItem.sizeVariants) {
-          const variant = menuItem.sizeVariants.find((v) => v.size === item.size);
-          return total + (variant ? variant.price * item.quantity : 0);
-        }
-        return total + (menuItem.price || 0) * item.quantity;
-      }, 0);
-      return sum + line;
-    }, 0);
+    return todaysOrders.reduce(
+      (sum, order) =>
+        sum + order.items.reduce((total, item) => total + getLineLineTotal(item, menuItems), 0),
+      0
+    );
   }, [todaysOrders, menuItems]);
 
   const pendingCount = useMemo(

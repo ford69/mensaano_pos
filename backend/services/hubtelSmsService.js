@@ -128,19 +128,8 @@ class HubtelSmsService {
       const orderNumber = order.id.slice(-6);
       const orderType = order.type === 'dine-in' ? `Dine-In (Table ${order.tableNumber})` : 'Delivery';
       
-      // Calculate total
-      let total = 0;
-      order.items.forEach(item => {
-        const menuItem = menuItems.find(m => m.id === item.menuItemId);
-        if (menuItem) {
-          if (item.size && menuItem.sizeVariants) {
-            const variant = menuItem.sizeVariants.find(v => v.size === item.size);
-            total += variant ? variant.price * item.quantity : 0;
-          } else {
-            total += (menuItem.price || 0) * item.quantity;
-          }
-        }
-      });
+      const { getOrderItemsTotal } = require('./integrationItemResolver');
+      const total = getOrderItemsTotal(order.items, menuItems);
 
       const message = `Hello ${customerName}! Your order #${orderNumber} has been received and is being prepared. Order type: ${orderType}. Total: ₵${total.toFixed(2)}. Thank you for choosing Mensaano & The Shawarma Shark!`;
 
@@ -163,19 +152,8 @@ class HubtelSmsService {
       const orderNumber = order.id.slice(-6);
       const orderType = order.type === 'dine-in' ? `Dine-In (Table ${order.tableNumber})` : 'Delivery';
       
-      // Calculate total
-      let total = 0;
-      order.items.forEach(item => {
-        const menuItem = menuItems.find(m => m.id === item.menuItemId);
-        if (menuItem) {
-          if (item.size && menuItem.sizeVariants) {
-            const variant = menuItem.sizeVariants.find(v => v.size === item.size);
-            total += variant ? variant.price * item.quantity : 0;
-          } else {
-            total += (menuItem.price || 0) * item.quantity;
-          }
-        }
-      });
+      const { getOrderItemsTotal } = require('./integrationItemResolver');
+      const total = getOrderItemsTotal(order.items, menuItems);
 
       let message;
       if (order.type === 'dine-in') {

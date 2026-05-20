@@ -124,11 +124,13 @@ components:
 
     OrderLineItem:
       type: object
-      required: [menuItemId, quantity]
       properties:
         menuItemId:
           type: string
-          description: MongoDB ObjectId string of a menu item
+          description: MongoDB id when linked to menu; empty for custom integration lines
+        name:
+          type: string
+          description: Display name (custom lines or snapshot)
         quantity:
           type: integer
           minimum: 1
@@ -136,6 +138,33 @@ components:
           type: string
         note:
           type: string
+        unitPrice:
+          type: number
+          description: Per-unit price for custom lines without menu match
+
+    IntegrationOrderLineItem:
+      type: object
+      required: [quantity]
+      description: |
+        Provide **menuItemId** (ObjectId or menu name string), **name**, or both.
+        Server matches menu when possible; otherwise stores a custom line with `name` and optional `unitPrice`.
+      properties:
+        menuItemId:
+          type: string
+          description: MongoDB id and/or text to match menu by name
+        name:
+          type: string
+          description: Item label from WhatsApp/AI (used for matching or custom lines)
+        quantity:
+          type: integer
+          minimum: 1
+        size:
+          type: string
+        note:
+          type: string
+        unitPrice:
+          type: number
+          description: Used when item does not match menu (for totals/receipts)
 
     Customer:
       type: object
@@ -183,6 +212,18 @@ components:
           type: string
         updatedAt:
           type: string
+        _integrationWarnings:
+          type: array
+          description: Present on integration POST 201 when some lines had no menu match
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              message:
+                type: string
+              name:
+                type: string
 
     OrderCreateStaff:
       type: object
@@ -198,7 +239,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/OrderLineItem"
+            $ref: "#/components/schemas/IntegrationOrderLineItem"
         status:
           type: string
         paymentStatus:
@@ -258,7 +299,7 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/OrderLineItem"
+            $ref: "#/components/schemas/IntegrationOrderLineItem"
         status:
           type: string
         paymentStatus:
@@ -607,7 +648,9 @@ paths:
       summary: Create order from external bridge (idempotent)
       description: |
         Requires `X-API-Key`. `externalOrderId` must be unique; duplicates return **200** with the existing order.
-        New orders return **201**. `createdBy` is set from `INTEGRATION_ORDER_CREATED_BY` or defaults to `integration-external`.
+        New orders return **201**. Line items accept **menuItemId** and/or **name** (strict ObjectId not required).
+        Unmatched lines are stored as custom items; response may include `_integrationWarnings`.
+        `createdBy` is set from `INTEGRATION_ORDER_CREATED_BY` or defaults to `integration-external`.
       security:
         - IntegrationApiKey: []
       requestBody:
@@ -628,10 +671,12 @@ paths:
                     phone: "233551234567"
                     address: "Spintex, Accra"
                   items:
-                    - menuItemId: "REPLACE_WITH_REAL_MENU_ITEM_ID"
+                    - name: "Chicken Shawarma"
                       quantity: 2
                       size: "Large"
                       note: "No onions"
+                    - menuItemId: "507f1f77bcf86cd799439011"
+                      quantity: 1
                   status: "pending"
                   paymentStatus: "paid"
                   specialInstructions: "Call on arrival"
@@ -649,10 +694,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/Order"
         "400":
+          description: Validation error (optional itemIndex for line errors)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                type: object
+                properties:
+                  error:
+                    type: string
+                  itemIndex:
+                    type: integer
+                    description: 0-based index into items array
         "401":
           content:
             application/json:

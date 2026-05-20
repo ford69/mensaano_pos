@@ -242,7 +242,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"externalOrderId\": \"postman-test-001\",\n  \"source\": \"whatsapp_ai\",\n  \"type\": \"delivery\",\n  \"customer\": {\n    \"name\": \"Integration Customer\",\n    \"phone\": \"0550000001\",\n    \"address\": \"Accra\"\n  },\n  \"items\": [\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"status\": \"pending\",\n  \"paymentStatus\": \"paid\"\n}"
+              "raw": "{\n  \"externalOrderId\": \"postman-test-001\",\n  \"source\": \"whatsapp_ai\",\n  \"type\": \"delivery\",\n  \"customer\": {\n    \"name\": \"Integration Customer\",\n    \"phone\": \"0550000001\",\n    \"address\": \"Accra\"\n  },\n  \"items\": [\n    {\n      \"name\": \"Chicken Shawarma\",\n      \"quantity\": 1,\n      \"size\": \"Large\"\n    },\n    {\n      \"menuItemId\": \"{{menuItemId}}\",\n      \"quantity\": 1\n    }\n  ],\n  \"status\": \"pending\",\n  \"paymentStatus\": \"paid\"\n}"
             },
             "url": "{{baseUrl}}/api/integration/orders",
             "description": "Change `externalOrderId` for each new order; repeat same id to test idempotency (200 + same body)."
