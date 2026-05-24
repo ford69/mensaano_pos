@@ -65,7 +65,16 @@ router.post('/login', authLoginLimiter, async (req, res) => {
       { expiresIn: '1d' }
     );
     console.log('[LOGIN] Login successful for:', user.username);
-    res.json({ token, user: { id: user._id, username: user.username, role: user.role } });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    });
   } catch (err) {
     console.error('[LOGIN] Error during login:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -73,12 +82,23 @@ router.post('/login', authLoginLimiter, async (req, res) => {
 });
 
 // Current user from JWT (session restore on app launch)
-router.get('/me', authMiddleware, (req, res) => {
-  res.json({
-    id: req.user.id,
-    username: req.user.username,
-    role: req.user.role,
-  });
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    });
+  } catch (err) {
+    console.error('[AUTH /me] Error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 module.exports = router; 

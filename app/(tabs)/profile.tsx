@@ -90,6 +90,17 @@ export default function ProfilePage() {
     }
   };
 
+  const formatMemberSince = (createdAt?: string) => {
+    if (!createdAt?.trim()) return '—';
+    const date = new Date(createdAt);
+    if (Number.isNaN(date.getTime())) return '—';
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
   if (!user) return null;
 
   return (
@@ -162,9 +173,7 @@ export default function ProfilePage() {
 
             <View style={styles.infoGroup}>
               <Text style={styles.label}>Member Since</Text>
-              <Text style={styles.value}>
-                {new Date(user.createdAt).toLocaleDateString()}
-              </Text>
+              <Text style={styles.value}>{formatMemberSince(user.createdAt)}</Text>
             </View>
           </View>
         </View>

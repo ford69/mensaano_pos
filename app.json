@@ -31,7 +31,7 @@
       }
     },
     "android": {
-      "package": "com.mensaanogh.pos",
+      "package": "com.mensaano.pos",
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
