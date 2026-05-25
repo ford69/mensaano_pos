@@ -3,6 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '@/types';
 import { API_URL } from '@/config/api';
 
+const authLog = (label: string, details?: Record<string, unknown>) => {
+  if (__DEV__) {
+    console.log(`[Auth] ${label}`, details ?? '');
+  }
+};
 
 interface AuthContextType {
   user: User | null;
@@ -25,25 +30,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Try to load token and user info on app start
     const load = async () => {
+      authLog('Restoring session', { apiUrl: API_URL });
       try {
         const storedToken = await AsyncStorage.getItem('token');
         
         if (storedToken) {
           try {
+            const meUrl = `${API_URL}/auth/me`;
+            authLog('GET /auth/me', { url: meUrl });
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-            const res = await fetch(`${API_URL}/auth/me`, {
+            const res = await fetch(meUrl, {
               headers: { Authorization: `Bearer ${storedToken}` },
               signal: controller.signal,
             });
 
             clearTimeout(timeoutId);
+            authLog('/auth/me response', {
+              status: res.status,
+              ok: res.ok,
+              contentType: res.headers.get('content-type'),
+            });
 
             if (res.ok) {
               const contentType = res.headers.get('content-type');
               if (contentType && contentType.includes('application/json')) {
                 const userData = await res.json();
+                authLog('Session restored', { username: userData.username, role: userData.role });
                 setToken(storedToken);
                 setUser({
                   id: String(userData.id),
@@ -53,22 +67,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   createdAt: userData.createdAt ?? '',
                 });
               } else {
+                const text = await res.text();
+                authLog('Session restore failed: non-JSON body', {
+                  preview: text.substring(0, 200),
+                });
                 await AsyncStorage.removeItem('token');
               }
             } else {
+              const text = await res.text().catch(() => '');
+              authLog('Session restore failed: bad status', {
+                status: res.status,
+                preview: text.substring(0, 200),
+              });
               await AsyncStorage.removeItem('token');
             }
-          } catch (err) {
-            if (__DEV__) {
-              console.error('Error loading user:', err);
-            }
+          } catch (err: unknown) {
+            const e = err as { name?: string; message?: string; cause?: unknown };
+            authLog('Session restore error', {
+              name: e?.name,
+              message: e?.message ?? String(err),
+              cause: e?.cause,
+            });
             await AsyncStorage.removeItem('token');
           }
+        } else {
+          authLog('No stored token');
         }
-      } catch (err) {
-        if (__DEV__) {
-          console.error('Error in load function:', err);
-        }
+      } catch (err: unknown) {
+        const e = err as { name?: string; message?: string };
+        authLog('Load error', { name: e?.name, message: e?.message ?? String(err) });
       } finally {
         setLoading(false);
       }
@@ -78,11 +105,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string): Promise<boolean> => {
     setLoading(true);
+    const loginUrl = `${API_URL}/auth/login`;
+    authLog('Login attempt', { url: loginUrl, username });
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-      
-      const res = await fetch(`${API_URL}/auth/login`, {
+      const timeoutId = setTimeout(() => {
+        authLog('Login request timed out (10s)');
+        controller.abort();
+      }, 10000);
+
+      const res = await fetch(loginUrl, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -94,13 +126,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       clearTimeout(timeoutId);
       
-      // Check if response is JSON before parsing
       const contentType = res.headers.get('content-type');
+      authLog('Login response', {
+        status: res.status,
+        ok: res.ok,
+        contentType,
+      });
+
       if (!contentType || !contentType.includes('application/json')) {
         const text = await res.text();
-        if (__DEV__) {
-          console.error('Login error: Expected JSON but got:', contentType, 'Response:', text.substring(0, 200));
-        }
+        authLog('Login failed: non-JSON response', {
+          status: res.status,
+          contentType,
+          preview: text.substring(0, 200),
+        });
         setLoading(false);
         return false;
       }
@@ -108,6 +147,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json();
       
       if (res.ok && data.token) {
+        authLog('Login success', { username: data.user?.username, role: data.user?.role });
         await AsyncStorage.setItem('token', data.token);
         setToken(data.token);
         setUser({
@@ -119,14 +159,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         setLoading(false);
         return true;
-      } else {
-        setLoading(false);
-        return false;
       }
-    } catch (err: any) {
-      if (__DEV__) {
-        console.error('Login error:', err?.message || err);
-      }
+
+      authLog('Login failed: bad credentials or missing token', {
+        status: res.status,
+        message: data?.message ?? data?.error,
+        keys: data ? Object.keys(data) : [],
+      });
+      setLoading(false);
+      return false;
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string; cause?: unknown };
+      authLog('Login network/error', {
+        name: e?.name,
+        message: e?.message ?? String(err),
+        cause: e?.cause,
+        url: loginUrl,
+      });
       setLoading(false);
       return false;
     }
